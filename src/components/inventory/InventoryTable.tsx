@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { InventoryItem } from "@/lib/types";
@@ -5,38 +6,91 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2, PackageSearch } from "lucide-react";
-import { useState } from "react";
-import { Input } from "../ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { MoreHorizontal, Edit, Trash2, PackageSearch, Eye } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { InventoryItemForm, type InventoryItemFormValues } from "./InventoryItemForm";
+import { useToast } from "@/hooks/use-toast";
 
 interface InventoryTableProps {
   items: InventoryItem[];
+  onUpdateItem: (item: InventoryItem) => void;
+  onDeleteItem: (itemId: string) => void;
 }
 
-export function InventoryTable({ items: initialItems }: InventoryTableProps) {
-  const [items, setItems] = useState<InventoryItem[]>(initialItems);
+export function InventoryTable({ items, onUpdateItem, onDeleteItem }: InventoryTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const { toast } = useToast();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleEdit = (item: InventoryItem) => {
-    // Placeholder for edit functionality
-    console.log("Edit item:", item);
-    alert(`Editing ${item.name}. Implement dialog/form.`);
+    setSelectedItem(item);
+    setIsEditModalOpen(true);
   };
 
-  const handleDelete = (itemId: string) => {
-    // Placeholder for delete functionality
-    console.log("Delete item ID:", itemId);
-    setItems(prevItems => prevItems.filter(item => item.id !== itemId));
-    alert(`Deleted item ${itemId}. Update Firebase.`);
+  const handleEditSubmit = (values: InventoryItemFormValues) => {
+    if (!selectedItem) return;
+    const updatedItem: InventoryItem = {
+      ...selectedItem,
+      ...values,
+      expirationDate: values.expirationDate.toISOString(),
+    };
+    onUpdateItem(updatedItem);
+    setIsEditModalOpen(false);
+    setSelectedItem(null);
+  };
+
+  const confirmDelete = (item: InventoryItem) => {
+    setSelectedItem(item);
+    setIsDeleteAlertOpen(true);
+  };
+
+  const handleDelete = () => {
+    if (selectedItem) {
+      onDeleteItem(selectedItem.id);
+      setIsDeleteAlertOpen(false);
+      setSelectedItem(null);
+    }
+  };
+
+  const handleViewDetails = (item: InventoryItem) => {
+    setSelectedItem(item);
+    setIsViewModalOpen(true);
   };
   
-  const uniqueCategories = ["all", ...new Set(initialItems.map(item => item.category))];
+  const uniqueCategories = ["all", ...new Set(items.map(item => item.category))];
 
   const filteredItems = items.filter(item => {
     const matchesSearchTerm = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                              item.category.toLowerCase().includes(searchTerm.toLowerCase());
+                              item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                              (item.barcode && item.barcode.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = filterCategory === "all" || item.category === filterCategory;
     return matchesSearchTerm && matchesCategory;
   });
@@ -44,9 +98,9 @@ export function InventoryTable({ items: initialItems }: InventoryTableProps) {
   const getStatusBadgeVariant = (status: InventoryItem['status']): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
       case 'In Stock':
-        return 'default'; // Or a success-like color from theme if available e.g. using accent
+        return 'default'; 
       case 'Low Stock':
-        return 'secondary'; // Or a warning-like color
+        return 'secondary'; 
       case 'Out of Stock':
         return 'destructive';
       default:
@@ -54,12 +108,17 @@ export function InventoryTable({ items: initialItems }: InventoryTableProps) {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    if (!mounted) return new Date(dateString).toDateString(); // Fallback for SSR or pre-mount
+    return new Date(dateString).toLocaleDateString();
+  };
+
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
         <Input 
-          placeholder="Search inventory..."
+          placeholder="Search name, category, barcode..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-sm"
@@ -85,6 +144,7 @@ export function InventoryTable({ items: initialItems }: InventoryTableProps) {
               <TableHead className="font-headline">Category</TableHead>
               <TableHead className="font-headline text-right">Quantity</TableHead>
               <TableHead className="font-headline">Expiration Date</TableHead>
+               <TableHead className="font-headline">Barcode</TableHead>
               <TableHead className="font-headline">Status</TableHead>
               <TableHead className="font-headline text-right">Actions</TableHead>
             </TableRow>
@@ -96,7 +156,8 @@ export function InventoryTable({ items: initialItems }: InventoryTableProps) {
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>{item.category}</TableCell>
                   <TableCell className="text-right">{item.quantity}</TableCell>
-                  <TableCell>{new Date(item.expirationDate).toLocaleDateString()}</TableCell>
+                  <TableCell>{formatDate(item.expirationDate)}</TableCell>
+                  <TableCell>{item.barcode || "N/A"}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusBadgeVariant(item.status)}>{item.status}</Badge>
                   </TableCell>
@@ -110,18 +171,15 @@ export function InventoryTable({ items: initialItems }: InventoryTableProps) {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => handleViewDetails(item)}>
+                          <Eye className="mr-2 h-4 w-4" /> View Details
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleEdit(item)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
+                          <Edit className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDelete(item.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
+                        <DropdownMenuItem onClick={() => confirmDelete(item)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
-                         <DropdownMenuSeparator />
-                         <DropdownMenuItem>
-                            <PackageSearch className="mr-2 h-4 w-4" /> View Details
-                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -129,7 +187,7 @@ export function InventoryTable({ items: initialItems }: InventoryTableProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                   No inventory items found.
                 </TableCell>
               </TableRow>
@@ -137,14 +195,72 @@ export function InventoryTable({ items: initialItems }: InventoryTableProps) {
           </TableBody>
         </Table>
       </Card>
+
+      {/* Edit Item Dialog */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-headline text-xl">Edit Inventory Item</DialogTitle>
+            <DialogDescription>
+              Update the details of {selectedItem?.name || "the item"}.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedItem && (
+            <InventoryItemForm
+              onSubmit={handleEditSubmit}
+              initialData={{...selectedItem, expirationDate: selectedItem.expirationDate}}
+              onCancel={() => { setIsEditModalOpen(false); setSelectedItem(null); }}
+              isEditMode
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* View Item Details Dialog */}
+      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
+          <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                  <DialogTitle className="font-headline text-xl">Item Details: {selectedItem?.name}</DialogTitle>
+              </DialogHeader>
+              {selectedItem && (
+                  <div className="space-y-3 py-4 text-sm">
+                      <p><strong>ID:</strong> {selectedItem.id}</p>
+                      <p><strong>Name:</strong> {selectedItem.name}</p>
+                      <p><strong>Category:</strong> {selectedItem.category}</p>
+                      <p><strong>Quantity:</strong> {selectedItem.quantity}</p>
+                      <p><strong>Expiration Date:</strong> {formatDate(selectedItem.expirationDate)}</p>
+                      <p><strong>Status:</strong> <Badge variant={getStatusBadgeVariant(selectedItem.status)}>{selectedItem.status}</Badge></p>
+                      <p><strong>Barcode:</strong> {selectedItem.barcode || "N/A"}</p>
+                  </div>
+              )}
+              <Button onClick={() => setIsViewModalOpen(false)} variant="outline" className="w-full">Close</Button>
+          </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-headline">Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the item "{selectedItem?.name}" from the inventory.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSelectedItem(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
-// Minimal Card component for structure, assuming full Card is not imported/available
+// Minimal Card component for structure
 const Card = ({ children, className }: { children: React.ReactNode, className?: string }) => (
   <div className={`rounded-lg border bg-card text-card-foreground ${className}`}>
     {children}
   </div>
 );
-

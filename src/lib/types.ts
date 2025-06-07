@@ -1,10 +1,12 @@
+
 export interface InventoryItem {
   id: string;
   name: string;
   category: string;
   quantity: number;
-  expirationDate: string; // Consider using Date object or timestamp
+  expirationDate: string; // ISO string format
   status: 'In Stock' | 'Low Stock' | 'Out of Stock';
+  barcode?: string; // Optional barcode field
 }
 
 export interface Employee {
