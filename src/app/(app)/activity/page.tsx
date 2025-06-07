@@ -1,3 +1,5 @@
+"use client";
+
 import { ActivityLogTable } from "@/components/activity/ActivityLogTable";
 import type { ActivityLog } from "@/lib/types";
 import { Button } from "@/components/ui/button";

@@ -1,3 +1,5 @@
+"use client";
+
 import { InventoryTable } from "@/components/inventory/InventoryTable";
 import type { InventoryItem } from "@/lib/types";
 import { Button } from "@/components/ui/button";

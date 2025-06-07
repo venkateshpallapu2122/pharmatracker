@@ -1,7 +1,9 @@
+"use client";
+
 import { EmployeeCard } from "@/components/employees/EmployeeCard";
 import type { Employee } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Search } from "lucide-react";
+import { UserPlus, Search, Users } from "lucide-react"; // Added Users for empty state
 import { Input } from "@/components/ui/input";
 
 // Mock Data

@@ -1,3 +1,5 @@
+"use client";
+
 import { TaskTable } from "@/components/tasks/TaskTable";
 import type { Task } from "@/lib/types";
 import { Button } from "@/components/ui/button";
