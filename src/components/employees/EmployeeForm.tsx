@@ -57,12 +57,12 @@ export function EmployeeForm({
     },
   });
 
-  const roles = ["Pharmacist", "Pharmacy Technician", "Dispensary Manager", "Logistics Coordinator", "Customer Service Rep", "Intern"];
+  const roles = ["Pharmacist", "Pharmacy Technician", "Dispensary Manager", "Logistics Coordinator", "Customer Service Rep", "Intern", "Chief Pharmacist", "Night Shift Pharmacist"];
 
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 md:space-y-6 max-h-[70vh] overflow-y-auto pr-2">
         <FormField
           control={form.control}
           name="name"

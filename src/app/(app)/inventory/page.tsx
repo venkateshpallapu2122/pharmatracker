@@ -91,7 +91,7 @@ export default function InventoryPage() {
             });
         }
         await batch.commit();
-        setInventoryItems(addedItems);
+        setInventoryItems(addedItems.sort((a,b) => new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime()));
         toast({ title: "Mock Data Seeded", description: "Initial inventory created successfully." });
       } else {
         const items: InventoryItem[] = querySnapshot.docs.map(doc => {
@@ -106,7 +106,7 @@ export default function InventoryPage() {
             barcode: data.barcode,
           };
         });
-        setInventoryItems(items);
+        setInventoryItems(items.sort((a,b) => new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime()));
       }
     } catch (error) {
       console.error("Error fetching inventory items: ", error);
@@ -162,7 +162,7 @@ export default function InventoryPage() {
         ...updatedItem,
         expirationDate: Timestamp.fromDate(new Date(updatedItem.expirationDate)),
       };
-      const { id, ...updatePayload } = dataToUpdateFirestore;
+      const { id, ...updatePayload } = dataToUpdateFirestore; // Exclude id from the update payload
 
       await updateDoc(itemDocRef, updatePayload);
       
@@ -205,19 +205,19 @@ export default function InventoryPage() {
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 md:space-y-8 animate-fadeIn">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-3xl font-headline text-primary">Inventory Overview</h2>
           <p className="text-muted-foreground font-body">Manage and track your pharmaceutical products.</p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={(open) => !isSubmitting && setIsAddDialogOpen(open)}>
           <DialogTrigger asChild>
-            <Button className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={isSubmitting}>
+            <Button className="bg-accent text-accent-foreground hover:bg-accent/90 w-full sm:w-auto" disabled={isSubmitting}>
               <PlusCircle className="mr-2 h-5 w-5" /> Add New Item
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-md md:max-w-lg">
             <DialogHeader>
               <DialogTitle className="font-headline text-xl">Add New Inventory Item</DialogTitle>
               <DialogDescription>
@@ -247,3 +247,4 @@ export default function InventoryPage() {
     </div>
   );
 }
+

@@ -83,6 +83,7 @@ export default function ExpirationTrackerPage() {
   };
 
   const getDaysText = (days: number): string => {
+    if (!mounted) return new Date(Date.now() + days * 86400000).toDateString(); // Fallback
     if (days < 0) return `Expired ${Math.abs(days)} days ago`;
     if (days === 0) return "Expires today";
     return `Expires in ${days} days`;
@@ -96,8 +97,8 @@ export default function ExpirationTrackerPage() {
   
   if (!mounted) {
     return (
-        <div className="space-y-8 animate-fadeIn">
-             <div className="flex justify-between items-center">
+        <div className="space-y-6 md:space-y-8 animate-fadeIn">
+             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                 <h2 className="text-3xl font-headline text-primary flex items-center">
                     <CalendarClock className="mr-3 h-8 w-8" /> Expiration Tracker
@@ -124,17 +125,17 @@ export default function ExpirationTrackerPage() {
   }
 
   return (
-    <div className="space-y-8 animate-fadeIn">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 md:space-y-8 animate-fadeIn">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-3xl font-headline text-primary flex items-center">
             <CalendarClock className="mr-3 h-8 w-8" /> Expiration Tracker
           </h2>
           <p className="text-muted-foreground font-body">Monitor product expiration dates to ensure safety and compliance.</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
             <Select value={filterDays} onValueChange={setFilterDays}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Filter by expiry" />
                 </SelectTrigger>
                 <SelectContent>
@@ -147,7 +148,7 @@ export default function ExpirationTrackerPage() {
             </Select>
             <Dialog open={isManageAlertDialogOpen} onOpenChange={setIsManageAlertDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" className="w-full sm:w-auto">
                     <Bell className="mr-2 h-4 w-4" /> Manage Alerts
                 </Button>
               </DialogTrigger>
@@ -217,38 +218,40 @@ export default function ExpirationTrackerPage() {
         </CardHeader>
         <CardContent>
           {filteredAlerts.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[100px]"></TableHead>
-                  <TableHead className="font-headline">Product Name</TableHead>
-                  <TableHead className="font-headline">Expiration Date</TableHead>
-                  <TableHead className="font-headline text-right">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAlerts.map((alert) => (
-                  <TableRow key={alert.id} className="hover:bg-muted/30 transition-colors">
-                    <TableCell>
-                      <AlertTriangle 
-                        className={`h-6 w-6 ${
-                          alert.daysToExpiry < 0 ? 'text-destructive' : 
-                          alert.daysToExpiry < 7 ? 'text-destructive' : 
-                          alert.daysToExpiry < 30 ? 'text-yellow-500' : 'text-green-500'
-                        }`} 
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">{alert.itemName}</TableCell>
-                    <TableCell>{new Date(alert.expirationDate).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant={getBadgeVariant(alert.daysToExpiry)}>
-                        {getDaysText(alert.daysToExpiry)}
-                      </Badge>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[60px] sm:w-[100px]"></TableHead>
+                    <TableHead className="font-headline">Product Name</TableHead>
+                    <TableHead className="font-headline">Expiration Date</TableHead>
+                    <TableHead className="font-headline text-right">Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredAlerts.map((alert) => (
+                    <TableRow key={alert.id} className="hover:bg-muted/30 transition-colors">
+                      <TableCell>
+                        <AlertTriangle 
+                          className={`h-6 w-6 ${
+                            alert.daysToExpiry < 0 ? 'text-destructive' : 
+                            alert.daysToExpiry < 7 ? 'text-destructive' : 
+                            alert.daysToExpiry < 30 ? 'text-yellow-500' : 'text-green-500'
+                          }`} 
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">{alert.itemName}</TableCell>
+                      <TableCell>{new Date(alert.expirationDate).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right">
+                        <Badge variant={getBadgeVariant(alert.daysToExpiry)}>
+                          {getDaysText(alert.daysToExpiry)}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
             <div className="text-center py-10">
               <CalendarClock className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -260,4 +263,3 @@ export default function ExpirationTrackerPage() {
     </div>
   );
 }
-

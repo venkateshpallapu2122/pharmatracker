@@ -70,7 +70,7 @@ export function TaskForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 md:space-y-6 max-h-[70vh] overflow-y-auto pr-2">
         <FormField
           control={form.control}
           name="title"
@@ -97,7 +97,7 @@ export function TaskForm({
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           <FormField
             control={form.control}
             name="dueDate"
@@ -132,7 +132,7 @@ export function TaskForm({
             )}
           />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             <FormField
             control={form.control}
             name="status"
@@ -192,4 +192,3 @@ export function TaskForm({
     </Form>
   );
 }
-

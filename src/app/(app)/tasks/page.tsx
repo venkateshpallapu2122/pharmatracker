@@ -51,19 +51,19 @@ export default function TasksPage() {
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 md:space-y-8 animate-fadeIn">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-3xl font-headline text-primary">Task Management</h2>
           <p className="text-muted-foreground font-body">Organize, assign, and track all pharmacy tasks.</p>
         </div>
         <Dialog open={isCreateTaskDialogOpen} onOpenChange={(open) => !isSubmitting && setIsCreateTaskDialogOpen(open)}>
           <DialogTrigger asChild>
-            <Button className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={isSubmitting} suppressHydrationWarning>
+            <Button className="bg-accent text-accent-foreground hover:bg-accent/90 w-full sm:w-auto" disabled={isSubmitting} suppressHydrationWarning>
               <ListPlus className="mr-2 h-5 w-5" /> Create New Task
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-md md:max-w-lg">
             <DialogHeader>
               <DialogTitle className="font-headline text-xl">Create New Task</DialogTitle>
               <DialogDescription>
@@ -83,4 +83,3 @@ export default function TasksPage() {
     </div>
   );
 }
-

@@ -78,7 +78,7 @@ export function InventoryItemForm({ onSubmit, initialData, onCancel, isEditMode 
         return;
       }
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
         setHasCameraPermission(true);
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -120,6 +120,11 @@ export function InventoryItemForm({ onSubmit, initialData, onCancel, isEditMode 
     form.setValue("barcode", scannedBarcode);
     toast({ title: "Barcode Scanned", description: `Barcode: ${scannedBarcode}` });
     setShowScanner(false);
+     if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+    }
   };
 
   const internalOnSubmit = async (values: InventoryItemFormValues) => {
@@ -129,7 +134,7 @@ export function InventoryItemForm({ onSubmit, initialData, onCancel, isEditMode 
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(internalOnSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(internalOnSubmit)} className="space-y-4 md:space-y-6 max-h-[70vh] overflow-y-auto pr-2">
         <FormField
           control={form.control}
           name="name"
@@ -143,65 +148,70 @@ export function InventoryItemForm({ onSubmit, initialData, onCancel, isEditMode 
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="category"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Category</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g., Antibiotics" {...field} disabled={isSubmitting} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="quantity"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Quantity</FormLabel>
-              <FormControl>
-                <Input type="number" placeholder="e.g., 100" {...field} disabled={isSubmitting} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="expirationDate"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Expiration Date</FormLabel>
-              <DatePicker date={field.value} setDate={field.onChange} disabled={isSubmitting} />
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="status"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Status</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <FormField
+            control={form.control}
+            name="category"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Category</FormLabel>
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
+                    <Input placeholder="e.g., Antibiotics" {...field} disabled={isSubmitting} />
                 </FormControl>
-                <SelectContent>
-                  <SelectItem value="In Stock">In Stock</SelectItem>
-                  <SelectItem value="Low Stock">Low Stock</SelectItem>
-                  <SelectItem value="Out of Stock">Out of Stock</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <FormField
+            control={form.control}
+            name="quantity"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Quantity</FormLabel>
+                <FormControl>
+                    <Input type="number" placeholder="e.g., 100" {...field} disabled={isSubmitting} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <FormField
+            control={form.control}
+            name="expirationDate"
+            render={({ field }) => (
+                <FormItem className="flex flex-col">
+                <FormLabel>Expiration Date</FormLabel>
+                <DatePicker date={field.value} setDate={field.onChange} disabled={isSubmitting} />
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <FormField
+            control={form.control}
+            name="status"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Status</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
+                    <FormControl>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                    <SelectItem value="In Stock">In Stock</SelectItem>
+                    <SelectItem value="Low Stock">Low Stock</SelectItem>
+                    <SelectItem value="Out of Stock">Out of Stock</SelectItem>
+                    </SelectContent>
+                </Select>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        </div>
 
         <FormField
             control={form.control}
@@ -211,10 +221,11 @@ export function InventoryItemForm({ onSubmit, initialData, onCancel, isEditMode 
                 <FormLabel>Barcode (Optional)</FormLabel>
                 <div className="flex items-center gap-2">
                     <FormControl>
-                        <Input placeholder="Enter or scan barcode" {...field} disabled={isSubmitting} />
+                        <Input placeholder="Enter or scan barcode" {...field} disabled={isSubmitting || showScanner} />
                     </FormControl>
-                    <Button type="button" variant="outline" onClick={handleToggleScanner} className="shrink-0" disabled={isSubmitting || showScanner}>
-                        <Camera className="mr-2 h-4 w-4" /> {showScanner ? "Close Scanner" : "Scan"}
+                    <Button type="button" variant="outline" onClick={handleToggleScanner} className="shrink-0" disabled={isSubmitting}>
+                        <Camera className="mr-0 sm:mr-2 h-4 w-4" /> 
+                        <span className="hidden sm:inline">{showScanner ? "Close" : "Scan"}</span>
                     </Button>
                 </div>
                 <FormMessage />
@@ -224,7 +235,7 @@ export function InventoryItemForm({ onSubmit, initialData, onCancel, isEditMode 
 
         {showScanner && (
           <div className="space-y-2">
-            <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted playsInline />
+            <video ref={videoRef} className="w-full aspect-[4/3] sm:aspect-video rounded-md bg-muted border" autoPlay muted playsInline />
             {hasCameraPermission === false && (
               <Alert variant="destructive">
                 <AlertTitle>Camera Access Required</AlertTitle>

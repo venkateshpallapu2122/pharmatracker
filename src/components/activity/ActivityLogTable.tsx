@@ -28,6 +28,11 @@ export function ActivityLogTable({ logs: initialLogs }: ActivityLogTableProps) {
   }, []);
 
   const getInitials = (name: string) => {
+    if (!name) return "S"; // System or Unknown
+    const parts = name.split(" ");
+    if (parts.length > 1) {
+      return (parts[0][0] + parts[parts.length -1][0]).toUpperCase();
+    }
     return name.substring(0, 2).toUpperCase();
   };
 
@@ -39,6 +44,11 @@ export function ActivityLogTable({ logs: initialLogs }: ActivityLogTableProps) {
     return matchesSearchTerm && matchesDate;
   }).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
+  const formatDateDistance = (timestamp: string) => {
+    if (!mounted) return new Date(timestamp).toLocaleDateString();
+    return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
+  }
+
 
   return (
     <div className="space-y-4">
@@ -47,7 +57,8 @@ export function ActivityLogTable({ logs: initialLogs }: ActivityLogTableProps) {
           placeholder="Search logs (user, action, details)..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-md"
+          className="w-full sm:max-w-xs md:max-w-sm"
+          suppressHydrationWarning
         />
         <Popover>
           <PopoverTrigger asChild>
@@ -73,52 +84,54 @@ export function ActivityLogTable({ logs: initialLogs }: ActivityLogTableProps) {
         </Popover>
       </div>
       <Card className="shadow-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="font-headline w-[200px]">User</TableHead>
-              <TableHead className="font-headline">Action</TableHead>
-              <TableHead className="font-headline">Details</TableHead>
-              <TableHead className="font-headline text-right">Timestamp</TableHead>
-              <TableHead className="font-headline text-right w-[100px]">View</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredLogs.length > 0 ? (
-              filteredLogs.map((log) => (
-                <TableRow key={log.id} className="hover:bg-muted/30 transition-colors">
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9">
-                         <AvatarImage src={`https://placehold.co/40x40.png?text=${getInitials(log.user)}`} alt={log.user} data-ai-hint="user system"/>
-                        <AvatarFallback>{getInitials(log.user)}</AvatarFallback>
-                      </Avatar>
-                      <span className="font-medium">{log.user}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>{log.action}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground max-w-xs truncate" title={log.details ? JSON.stringify(log.details) : ''}>
-                    {log.details ? JSON.stringify(log.details) : 'N/A'}
-                  </TableCell>
-                  <TableCell className="text-right text-sm text-muted-foreground">
-                    {mounted ? formatDistanceToNow(new Date(log.timestamp), { addSuffix: true }) : new Date(log.timestamp).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => alert(`Details for log: ${log.id}`)}>
-                        <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-                <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                    No activity logs found for the selected criteria.
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="font-headline w-[150px] sm:w-[200px]">User</TableHead>
+                <TableHead className="font-headline">Action</TableHead>
+                <TableHead className="font-headline hidden md:table-cell">Details</TableHead>
+                <TableHead className="font-headline text-right">Timestamp</TableHead>
+                <TableHead className="font-headline text-right w-[80px] sm:w-[100px]">View</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredLogs.length > 0 ? (
+                filteredLogs.map((log) => (
+                  <TableRow key={log.id} className="hover:bg-muted/30 transition-colors">
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage src={`https://placehold.co/40x40.png?text=${getInitials(log.user)}`} alt={log.user} data-ai-hint="user system"/>
+                          <AvatarFallback>{getInitials(log.user)}</AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium truncate max-w-[100px] sm:max-w-none">{log.user}</span>
+                      </div>
                     </TableCell>
-                </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                    <TableCell className="max-w-[150px] sm:max-w-xs truncate" title={log.action}>{log.action}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground max-w-xs truncate hidden md:table-cell" title={log.details ? JSON.stringify(log.details) : ''}>
+                      {log.details ? JSON.stringify(log.details) : 'N/A'}
+                    </TableCell>
+                    <TableCell className="text-right text-sm text-muted-foreground">
+                      {formatDateDistance(log.timestamp)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" onClick={() => alert(`Details for log: ${log.id}`)}>
+                          <Eye className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                  <TableRow>
+                      <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                      No activity logs found for the selected criteria.
+                      </TableCell>
+                  </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
     </div>
   );

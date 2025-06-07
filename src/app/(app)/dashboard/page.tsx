@@ -1,3 +1,4 @@
+
 import { StatCard } from "@/components/dashboard/StatCard";
 import { RecentActivityItem } from "@/components/dashboard/RecentActivityItem";
 import { ExpiringSoonItem } from "@/components/dashboard/ExpiringSoonItem";
@@ -42,8 +43,8 @@ const mockExpiringSoon: ExpirationAlert[] = [
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-8 animate-fadeIn">
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+    <div className="space-y-6 md:space-y-8 animate-fadeIn">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard 
           title="Total Inventory Items" 
           value={mockInventorySummary.totalItems} 
@@ -75,41 +76,43 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
         <Card className="lg:col-span-2 shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div>
               <CardTitle className="font-headline text-xl">Urgent Tasks</CardTitle>
               <CardDescription>Tasks requiring immediate attention.</CardDescription>
             </div>
-            <Link href="/tasks">
-              <Button variant="outline" size="sm" className="ml-auto">View All Tasks</Button>
+            <Link href="/tasks" className="w-full sm:w-auto">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">View All Tasks</Button>
             </Link>
           </CardHeader>
           <CardContent>
             {mockUrgentTasks.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Task</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {mockUrgentTasks.slice(0, 5).map((task) => (
-                    <TableRow key={task.id} className="hover:bg-muted/30 transition-colors">
-                      <TableCell className="font-medium">{task.title}</TableCell>
-                      <TableCell>{new Date(task.dueDate).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <Badge variant={task.status === "Pending" ? "destructive" : "secondary"}>
-                          {task.status}
-                        </Badge>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Task</TableHead>
+                      <TableHead>Due Date</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {mockUrgentTasks.slice(0, 5).map((task) => (
+                      <TableRow key={task.id} className="hover:bg-muted/30 transition-colors">
+                        <TableCell className="font-medium">{task.title}</TableCell>
+                        <TableCell>{new Date(task.dueDate).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <Badge variant={task.status === "Pending" ? "destructive" : "secondary"}>
+                            {task.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">No urgent tasks at the moment.</p>
             )}
@@ -132,13 +135,13 @@ export default function DashboardPage() {
       </div>
 
       <Card className="shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div>
               <CardTitle className="font-headline text-xl">Recent Activity</CardTitle>
               <CardDescription>Latest actions performed in the system.</CardDescription>
             </div>
-            <Link href="/activity">
-              <Button variant="outline" size="sm" className="ml-auto">View Full Log</Button>
+            <Link href="/activity" className="w-full sm:w-auto">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">View Full Log</Button>
             </Link>
           </CardHeader>
           <CardContent className="space-y-1 max-h-96 overflow-y-auto">
@@ -152,3 +155,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

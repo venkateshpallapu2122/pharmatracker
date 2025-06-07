@@ -1,3 +1,4 @@
+
 "use client";
 import { SidebarNav } from "@/components/layout/SidebarNav";
 import { Header } from "@/components/layout/Header";
@@ -24,7 +25,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       "/dashboard": "Dashboard",
       "/inventory": "Inventory Management",
       "/expirations": "Expiration Tracker",
-      "/employees": "Employee Profiles",
+      "/employees": "Employee Directory",
       "/tasks": "Task Management",
       "/activity": "Activity Log",
       "/profile": "User Profile",
@@ -53,7 +54,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <SidebarNav />
         <div className="flex flex-1 flex-col transition-all duration-300 ease-in-out">
           <Header pageTitle={pageTitle} />
-          <main className="flex-1 overflow-y-auto p-6 md:p-8 bg-background">
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-background">
             {children}
           </main>
         </div>

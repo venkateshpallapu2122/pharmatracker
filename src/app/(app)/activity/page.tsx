@@ -62,17 +62,17 @@ export default function ActivityLogPage() {
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 md:space-y-8 animate-fadeIn">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-3xl font-headline text-primary">Activity Log</h2>
           <p className="text-muted-foreground font-body">Review all actions performed within the platform.</p>
         </div>
-        <div className="flex gap-2">
-            <Button variant="outline" onClick={handleRefreshLogs}>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={handleRefreshLogs} className="w-full sm:w-auto">
                 <RotateCcw className="mr-2 h-4 w-4" /> Refresh
             </Button>
-            <Button onClick={handleExportLogs} className="bg-accent text-accent-foreground hover:bg-accent/90">
+            <Button onClick={handleExportLogs} className="bg-accent text-accent-foreground hover:bg-accent/90 w-full sm:w-auto">
                 <Download className="mr-2 h-4 w-4" /> Export Logs
             </Button>
         </div>
@@ -81,4 +81,3 @@ export default function ActivityLogPage() {
     </div>
   );
 }
-
