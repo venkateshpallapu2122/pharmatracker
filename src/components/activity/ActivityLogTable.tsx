@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ActivityLog } from "@/lib/types";
@@ -7,7 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Button } from "@/components/ui/button";
 import { Eye, Filter, CalendarDays } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,11 @@ export function ActivityLogTable({ logs: initialLogs }: ActivityLogTableProps) {
   const [logs, setLogs] = useState<ActivityLog[]>(initialLogs);
   const [searchTerm, setSearchTerm] = useState("");
   const [date, setDate] = useState<Date | undefined>(undefined);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const getInitials = (name: string) => {
     return name.substring(0, 2).toUpperCase();
@@ -53,7 +59,7 @@ export function ActivityLogTable({ logs: initialLogs }: ActivityLogTableProps) {
               )}
             >
               <CalendarDays className="mr-2 h-4 w-4" />
-              {date ? new Date(date).toLocaleDateString() : <span>Filter by date</span>}
+              {date && mounted ? new Date(date).toLocaleDateString() : date ? new Date(date).toDateString() : <span>Filter by date</span>}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -95,7 +101,7 @@ export function ActivityLogTable({ logs: initialLogs }: ActivityLogTableProps) {
                     {log.details ? JSON.stringify(log.details) : 'N/A'}
                   </TableCell>
                   <TableCell className="text-right text-sm text-muted-foreground">
-                    {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
+                    {mounted ? formatDistanceToNow(new Date(log.timestamp), { addSuffix: true }) : new Date(log.timestamp).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => alert(`Details for log: ${log.id}`)}>

@@ -1,12 +1,24 @@
+
+"use client";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { ActivityLog } from "@/lib/types";
 import { formatDistanceToNow } from 'date-fns';
+import { useState, useEffect } from "react";
 
 interface RecentActivityItemProps {
   activity: ActivityLog;
 }
 
 export function RecentActivityItem({ activity }: RecentActivityItemProps) {
+  const [displayTimestamp, setDisplayTimestamp] = useState<string>("");
+  const [mounted, setMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setMounted(true);
+    setDisplayTimestamp(formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true }));
+  }, [activity.timestamp]);
+
   const getInitials = (name: string) => {
     return name.substring(0, 2).toUpperCase();
   };
@@ -20,7 +32,7 @@ export function RecentActivityItem({ activity }: RecentActivityItemProps) {
       <div className="grid gap-1 text-sm">
         <p className="font-medium text-foreground leading-tight">{activity.action}</p>
         <p className="text-xs text-muted-foreground">
-          By {activity.user} - {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
+          By {activity.user} - {mounted ? displayTimestamp : new Date(activity.timestamp).toLocaleDateString()}
         </p>
       </div>
     </div>
