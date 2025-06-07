@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2, PackageSearch, Eye } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, PackageSearch, Eye, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -32,11 +32,12 @@ import { useToast } from "@/hooks/use-toast";
 
 interface InventoryTableProps {
   items: InventoryItem[];
-  onUpdateItem: (item: InventoryItem) => void;
-  onDeleteItem: (itemId: string) => void;
+  onUpdateItem: (item: InventoryItem) => Promise<void>;
+  onDeleteItem: (itemId: string) => Promise<void>;
+  isSubmitting?: boolean;
 }
 
-export function InventoryTable({ items, onUpdateItem, onDeleteItem }: InventoryTableProps) {
+export function InventoryTable({ items, onUpdateItem, onDeleteItem, isSubmitting = false }: InventoryTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -55,14 +56,14 @@ export function InventoryTable({ items, onUpdateItem, onDeleteItem }: InventoryT
     setIsEditModalOpen(true);
   };
 
-  const handleEditSubmit = (values: InventoryItemFormValues) => {
+  const handleEditSubmit = async (values: InventoryItemFormValues) => {
     if (!selectedItem) return;
     const updatedItem: InventoryItem = {
       ...selectedItem,
       ...values,
       expirationDate: values.expirationDate.toISOString(),
     };
-    onUpdateItem(updatedItem);
+    await onUpdateItem(updatedItem);
     setIsEditModalOpen(false);
     setSelectedItem(null);
   };
@@ -72,9 +73,9 @@ export function InventoryTable({ items, onUpdateItem, onDeleteItem }: InventoryT
     setIsDeleteAlertOpen(true);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (selectedItem) {
-      onDeleteItem(selectedItem.id);
+      await onDeleteItem(selectedItem.id);
       setIsDeleteAlertOpen(false);
       setSelectedItem(null);
     }
@@ -93,7 +94,7 @@ export function InventoryTable({ items, onUpdateItem, onDeleteItem }: InventoryT
                               (item.barcode && item.barcode.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = filterCategory === "all" || item.category === filterCategory;
     return matchesSearchTerm && matchesCategory;
-  });
+  }).sort((a, b) => new Date(b.expirationDate).getTime() - new Date(a.expirationDate).getTime()); // Example sort
 
   const getStatusBadgeVariant = (status: InventoryItem['status']): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
@@ -164,20 +165,20 @@ export function InventoryTable({ items, onUpdateItem, onDeleteItem }: InventoryT
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
+                        <Button variant="ghost" className="h-8 w-8 p-0" disabled={isSubmitting}>
                           <span className="sr-only">Open menu</span>
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleViewDetails(item)}>
+                        <DropdownMenuItem onClick={() => handleViewDetails(item)} disabled={isSubmitting}>
                           <Eye className="mr-2 h-4 w-4" /> View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEdit(item)}>
+                        <DropdownMenuItem onClick={() => handleEdit(item)} disabled={isSubmitting}>
                           <Edit className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => confirmDelete(item)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                        <DropdownMenuItem onClick={() => confirmDelete(item)} className="text-destructive focus:text-destructive focus:bg-destructive/10" disabled={isSubmitting}>
                           <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -188,7 +189,7 @@ export function InventoryTable({ items, onUpdateItem, onDeleteItem }: InventoryT
             ) : (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  No inventory items found.
+                  No inventory items found. Add items to see them here.
                 </TableCell>
               </TableRow>
             )}
@@ -197,7 +198,7 @@ export function InventoryTable({ items, onUpdateItem, onDeleteItem }: InventoryT
       </Card>
 
       {/* Edit Item Dialog */}
-      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+      <Dialog open={isEditModalOpen} onOpenChange={(open) => !isSubmitting && setIsEditModalOpen(open)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-headline text-xl">Edit Inventory Item</DialogTitle>
@@ -211,6 +212,7 @@ export function InventoryTable({ items, onUpdateItem, onDeleteItem }: InventoryT
               initialData={{...selectedItem, expirationDate: selectedItem.expirationDate}}
               onCancel={() => { setIsEditModalOpen(false); setSelectedItem(null); }}
               isEditMode
+              isSubmitting={isSubmitting}
             />
           )}
         </DialogContent>
@@ -238,7 +240,7 @@ export function InventoryTable({ items, onUpdateItem, onDeleteItem }: InventoryT
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={(open) => !isSubmitting && setIsDeleteAlertOpen(open)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="font-headline">Are you sure?</AlertDialogTitle>
@@ -247,9 +249,9 @@ export function InventoryTable({ items, onUpdateItem, onDeleteItem }: InventoryT
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setSelectedItem(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
-              Delete
+            <AlertDialogCancel onClick={() => setSelectedItem(null)} disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

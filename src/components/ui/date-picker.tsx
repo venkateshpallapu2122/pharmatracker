@@ -1,7 +1,8 @@
 
 "use client"
 
-import *import type { HTMLAttributes } from "react";
+import * as React from "react";
+import type { HTMLAttributes } from "react"; // This line is kept for explicit type import as per original structure, but could use React.HTMLAttributes directly.
 import { format } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
 
@@ -14,12 +15,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 
-interface DatePickerProps extends HTMLAttributes<HTMLButtonElement> {
+interface DatePickerProps extends React.HTMLAttributes<HTMLButtonElement> {
   date: Date | undefined;
   setDate: (date: Date | undefined) => void;
+  disabled?: boolean; // Added disabled prop
 }
 
-export function DatePicker({ date, setDate, className, ...props }: DatePickerProps) {
+export function DatePicker({ date, setDate, className, disabled, ...props }: DatePickerProps) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -30,6 +32,7 @@ export function DatePicker({ date, setDate, className, ...props }: DatePickerPro
             !date && "text-muted-foreground",
             className
           )}
+          disabled={disabled} // Pass disabled prop
           {...props}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -42,6 +45,7 @@ export function DatePicker({ date, setDate, className, ...props }: DatePickerPro
           selected={date}
           onSelect={setDate}
           initialFocus
+          disabled={disabled || props.disabled} // Pass disabled prop to Calendar
         />
       </PopoverContent>
     </Popover>

@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import type { InventoryItem } from "@/lib/types";
-import { Barcode, Camera } from "lucide-react";
+import { Barcode, Camera, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import React, { useState, useEffect, useRef } from 'react';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -41,13 +41,14 @@ const formSchema = z.object({
 export type InventoryItemFormValues = z.infer<typeof formSchema>;
 
 interface InventoryItemFormProps {
-  onSubmit: (values: InventoryItemFormValues) => void;
+  onSubmit: (values: InventoryItemFormValues) => Promise<void> | void;
   initialData?: Partial<InventoryItemFormValues> & { expirationDate?: string | Date };
   onCancel: () => void;
   isEditMode?: boolean;
+  isSubmitting?: boolean;
 }
 
-export function InventoryItemForm({ onSubmit, initialData, onCancel, isEditMode = false }: InventoryItemFormProps) {
+export function InventoryItemForm({ onSubmit, initialData, onCancel, isEditMode = false, isSubmitting = false }: InventoryItemFormProps) {
   const { toast } = useToast();
   const [showScanner, setShowScanner] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -121,10 +122,14 @@ export function InventoryItemForm({ onSubmit, initialData, onCancel, isEditMode 
     setShowScanner(false);
   };
 
+  const internalOnSubmit = async (values: InventoryItemFormValues) => {
+    await onSubmit(values);
+  };
+
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(internalOnSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="name"
@@ -132,7 +137,7 @@ export function InventoryItemForm({ onSubmit, initialData, onCancel, isEditMode 
             <FormItem>
               <FormLabel>Product Name</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., Amoxicillin 250mg" {...field} />
+                <Input placeholder="e.g., Amoxicillin 250mg" {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -145,7 +150,7 @@ export function InventoryItemForm({ onSubmit, initialData, onCancel, isEditMode 
             <FormItem>
               <FormLabel>Category</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., Antibiotics" {...field} />
+                <Input placeholder="e.g., Antibiotics" {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -158,7 +163,7 @@ export function InventoryItemForm({ onSubmit, initialData, onCancel, isEditMode 
             <FormItem>
               <FormLabel>Quantity</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="e.g., 100" {...field} />
+                <Input type="number" placeholder="e.g., 100" {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -170,7 +175,7 @@ export function InventoryItemForm({ onSubmit, initialData, onCancel, isEditMode 
           render={({ field }) => (
             <FormItem className="flex flex-col">
               <FormLabel>Expiration Date</FormLabel>
-              <DatePicker date={field.value} setDate={field.onChange} />
+              <DatePicker date={field.value} setDate={field.onChange} disabled={isSubmitting} />
               <FormMessage />
             </FormItem>
           )}
@@ -181,7 +186,7 @@ export function InventoryItemForm({ onSubmit, initialData, onCancel, isEditMode 
           render={({ field }) => (
             <FormItem>
               <FormLabel>Status</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
@@ -206,9 +211,9 @@ export function InventoryItemForm({ onSubmit, initialData, onCancel, isEditMode 
                 <FormLabel>Barcode (Optional)</FormLabel>
                 <div className="flex items-center gap-2">
                     <FormControl>
-                        <Input placeholder="Enter or scan barcode" {...field} />
+                        <Input placeholder="Enter or scan barcode" {...field} disabled={isSubmitting} />
                     </FormControl>
-                    <Button type="button" variant="outline" onClick={handleToggleScanner} className="shrink-0">
+                    <Button type="button" variant="outline" onClick={handleToggleScanner} className="shrink-0" disabled={isSubmitting || showScanner}>
                         <Camera className="mr-2 h-4 w-4" /> {showScanner ? "Close Scanner" : "Scan"}
                     </Button>
                 </div>
@@ -230,7 +235,7 @@ export function InventoryItemForm({ onSubmit, initialData, onCancel, isEditMode 
               </Alert>
             )}
              {hasCameraPermission === true && (
-                <Button type="button" onClick={() => handleScanSuccess(`SIMULATED_SCAN_${Date.now()}`)} className="w-full">
+                <Button type="button" onClick={() => handleScanSuccess(`SIMULATED_SCAN_${Date.now()}`)} className="w-full" disabled={isSubmitting}>
                     Simulate Scan Success
                 </Button>
             )}
@@ -238,11 +243,11 @@ export function InventoryItemForm({ onSubmit, initialData, onCancel, isEditMode 
         )}
 
         <div className="flex justify-end gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit" className="bg-accent text-accent-foreground hover:bg-accent/90">
-            {isEditMode ? "Save Changes" : "Add Item"}
+          <Button type="submit" className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isEditMode ? "Save Changes" : "Add Item")}
           </Button>
         </div>
       </form>
