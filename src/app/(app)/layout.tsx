@@ -2,7 +2,7 @@
 import { SidebarNav } from "@/components/layout/SidebarNav";
 import { Header } from "@/components/layout/Header";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter, usePathname }_from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 

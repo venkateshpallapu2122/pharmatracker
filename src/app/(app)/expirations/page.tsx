@@ -1,3 +1,6 @@
+
+"use client"; // Ensure this is at the top
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -11,20 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Ensure useEffect is imported
 
-
-// Mock Data - In a real app, this would be derived from InventoryItem[]
-const mockInventoryItemsForExpiry: InventoryItem[] = [
-  { id: "1", name: "Amoxicillin 250mg Tabs", category: "Antibiotics", quantity: 500, expirationDate: new Date(Date.now() + 86400000 * 5).toISOString(), status: "In Stock" },
-  { id: "2", name: "Ibuprofen 400mg Tabs", category: "Pain Relief", quantity: 20, expirationDate: new Date(Date.now() + 86400000 * 12).toISOString(), status: "Low Stock" },
-  { id: "3", name: "Lisinopril 10mg Tabs", category: "Cardiovascular", quantity: 300, expirationDate: new Date(Date.now() + 86400000 * 25).toISOString(), status: "In Stock" },
-  { id: "4", name: "Metformin 500mg Tabs", category: "Diabetes", quantity: 0, expirationDate: new Date(Date.now() + 86400000 * 40).toISOString(), status: "Out of Stock" },
-  { id: "5", name: "Saline Solution 0.9% IV Bag", category: "Intravenous Solutions", quantity: 150, expirationDate: new Date(Date.now() + 86400000 * 65).toISOString(), status: "In Stock" },
-  { id: "6", name: "Aspirin 81mg EC Tabs", category: "Pain Relief", quantity: 75, expirationDate: new Date(Date.now() + 86400000 * 92).toISOString(), status: "In Stock" },
-  { id: "7", name: "Expired Item Example", category: "Test", quantity: 10, expirationDate: new Date(Date.now() - 86400000 * 3).toISOString(), status: "In Stock" },
-];
-
+// Helper functions (can remain at module level as they are pure)
 function calculateDaysToExpiry(expiryDate: string): number {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Normalize today to start of day
@@ -43,12 +35,27 @@ const generateExpirationAlerts = (items: InventoryItem[]): ExpirationAlert[] => 
   })).sort((a,b) => a.daysToExpiry - b.daysToExpiry); // Sort by soonest to expire
 };
 
-const mockExpirationAlerts: ExpirationAlert[] = generateExpirationAlerts(mockInventoryItemsForExpiry);
-
 export default function ExpirationTrackerPage() {
   const [filterDays, setFilterDays] = useState<string>("all");
+  const [expirationAlerts, setExpirationAlerts] = useState<ExpirationAlert[]>([]);
+  const [mounted, setMounted] = useState(false);
 
-  const filteredAlerts = mockExpirationAlerts.filter(alert => {
+  useEffect(() => {
+    setMounted(true);
+    // Mock Data - Initialize inside useEffect to use client's Date.now() consistently
+    const mockInventoryItemsForExpiry: InventoryItem[] = [
+      { id: "1", name: "Amoxicillin 250mg Tabs", category: "Antibiotics", quantity: 500, expirationDate: new Date(Date.now() + 86400000 * 5).toISOString(), status: "In Stock" },
+      { id: "2", name: "Ibuprofen 400mg Tabs", category: "Pain Relief", quantity: 20, expirationDate: new Date(Date.now() + 86400000 * 12).toISOString(), status: "Low Stock" },
+      { id: "3", name: "Lisinopril 10mg Tabs", category: "Cardiovascular", quantity: 300, expirationDate: new Date(Date.now() + 86400000 * 25).toISOString(), status: "In Stock" },
+      { id: "4", name: "Metformin 500mg Tabs", category: "Diabetes", quantity: 0, expirationDate: new Date(Date.now() + 86400000 * 40).toISOString(), status: "Out of Stock" },
+      { id: "5", name: "Saline Solution 0.9% IV Bag", category: "Intravenous Solutions", quantity: 150, expirationDate: new Date(Date.now() + 86400000 * 65).toISOString(), status: "In Stock" },
+      { id: "6", name: "Aspirin 81mg EC Tabs", category: "Pain Relief", quantity: 75, expirationDate: new Date(Date.now() + 86400000 * 92).toISOString(), status: "In Stock" },
+      { id: "7", name: "Expired Item Example", category: "Test", quantity: 10, expirationDate: new Date(Date.now() - 86400000 * 3).toISOString(), status: "In Stock" },
+    ];
+    setExpirationAlerts(generateExpirationAlerts(mockInventoryItemsForExpiry));
+  }, []); // Empty dependency array, runs once on mount
+
+  const filteredAlerts = expirationAlerts.filter(alert => {
     if (filterDays === "all") return true;
     if (filterDays === "expired") return alert.daysToExpiry < 0;
     return alert.daysToExpiry >= 0 && alert.daysToExpiry <= parseInt(filterDays);
@@ -66,6 +73,39 @@ export default function ExpirationTrackerPage() {
     if (days === 0) return "Expires today";
     return `Expires in ${days} days`;
   };
+  
+  if (!mounted) {
+    // Render nothing or a placeholder until mounted to avoid hydration issues with dynamic data
+    // For this page, showing a loading state or empty table is reasonable.
+    // Returning null is simplest for ensuring no mismatch.
+    // Or render the structure with a loading indicator.
+    return (
+        <div className="space-y-8 animate-fadeIn">
+             <div className="flex justify-between items-center">
+                <div>
+                <h2 className="text-3xl font-headline text-primary flex items-center">
+                    <CalendarClock className="mr-3 h-8 w-8" /> Expiration Tracker
+                </h2>
+                <p className="text-muted-foreground font-body">Monitor product expiration dates to ensure safety and compliance.</p>
+                </div>
+             </div>
+             <Card className="shadow-lg">
+                <CardHeader>
+                    <CardTitle className="font-headline text-xl">Upcoming Expirations</CardTitle>
+                    <CardDescription>
+                        Loading expiration data...
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="text-center py-10">
+                        <CalendarClock className="mx-auto h-12 w-12 text-muted-foreground animate-pulse" />
+                        <p className="mt-4 text-lg text-muted-foreground">Loading data...</p>
+                    </div>
+                </CardContent>
+             </Card>
+        </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -139,7 +179,7 @@ export default function ExpirationTrackerPage() {
           ) : (
             <div className="text-center py-10">
               <CalendarClock className="mx-auto h-12 w-12 text-muted-foreground" />
-              <p className="mt-4 text-lg text-muted-foreground">No items match current filter.</p>
+              <p className="mt-4 text-lg text-muted-foreground">No items match current filter or data is still loading.</p>
             </div>
           )}
         </CardContent>
