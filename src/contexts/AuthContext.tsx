@@ -1,11 +1,17 @@
+
 "use client";
 
-import type { User } from 'firebase/auth';
+import type { User as FirebaseUser } from 'firebase/auth'; // Renamed to avoid conflict
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useRouter, usePathname } from 'next/navigation';
 import { BarChart } from 'lucide-react'; // Placeholder icon
+
+// Define a new User type that includes the role
+export interface User extends FirebaseUser {
+  role?: 'admin' | 'user';
+}
 
 interface AuthContextType {
   user: User | null;
@@ -22,7 +28,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+      if (currentUser) {
+        // Simulate fetching role. For now, all logged-in users are admins.
+        const userWithRole: User = { ...currentUser, role: 'admin' };
+        setUser(userWithRole);
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
     return () => unsubscribe();
@@ -59,3 +71,4 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+

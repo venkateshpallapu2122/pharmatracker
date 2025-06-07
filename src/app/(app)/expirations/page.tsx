@@ -15,6 +15,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useState, useEffect } from "react"; // Ensure useEffect is imported
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
+
 
 // Helper functions (can remain at module level as they are pure)
 function calculateDaysToExpiry(expiryDate: string): number {
@@ -39,6 +44,15 @@ export default function ExpirationTrackerPage() {
   const [filterDays, setFilterDays] = useState<string>("all");
   const [expirationAlerts, setExpirationAlerts] = useState<ExpirationAlert[]>([]);
   const [mounted, setMounted] = useState(false);
+  const [isManageAlertDialogOpen, setIsManageAlertDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  // Mock alert settings state
+  const [alertSettings, setAlertSettings] = useState({
+    email7Days: true,
+    email30Days: false,
+    inAppCritical: true,
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -73,12 +87,14 @@ export default function ExpirationTrackerPage() {
     if (days === 0) return "Expires today";
     return `Expires in ${days} days`;
   };
+
+  const handleSaveAlertSettings = () => {
+    // In a real app, save settings to backend/localStorage
+    toast({ title: "Alert Settings Saved", description: "Your notification preferences have been updated (mock)." });
+    setIsManageAlertDialogOpen(false);
+  };
   
   if (!mounted) {
-    // Render nothing or a placeholder until mounted to avoid hydration issues with dynamic data
-    // For this page, showing a loading state or empty table is reasonable.
-    // Returning null is simplest for ensuring no mismatch.
-    // Or render the structure with a loading indicator.
     return (
         <div className="space-y-8 animate-fadeIn">
              <div className="flex justify-between items-center">
@@ -129,9 +145,66 @@ export default function ExpirationTrackerPage() {
                     <SelectItem value="90">Next 90 Days</SelectItem>
                 </SelectContent>
             </Select>
-            <Button variant="outline">
-                <Bell className="mr-2 h-4 w-4" /> Manage Alerts
-            </Button>
+            <Dialog open={isManageAlertDialogOpen} onOpenChange={setIsManageAlertDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                    <Bell className="mr-2 h-4 w-4" /> Manage Alerts
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="font-headline text-xl">Manage Expiration Alerts</DialogTitle>
+                  <DialogDescription>
+                    Configure how you want to be notified about expiring items.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="flex items-center justify-between space-x-2 p-3 border rounded-md">
+                    <Label htmlFor="alert-email-7days" className="flex flex-col space-y-1">
+                      <span>Email for items expiring in 7 days</span>
+                      <span className="font-normal leading-snug text-muted-foreground">
+                        Receive an email notification for items nearing 7-day expiry.
+                      </span>
+                    </Label>
+                    <Switch
+                      id="alert-email-7days"
+                      checked={alertSettings.email7Days}
+                      onCheckedChange={(checked) => setAlertSettings(prev => ({...prev, email7Days: checked}))}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between space-x-2 p-3 border rounded-md">
+                    <Label htmlFor="alert-email-30days" className="flex flex-col space-y-1">
+                      <span>Email for items expiring in 30 days</span>
+                       <span className="font-normal leading-snug text-muted-foreground">
+                        Receive an email notification for items nearing 30-day expiry.
+                      </span>
+                    </Label>
+                    <Switch
+                      id="alert-email-30days"
+                      checked={alertSettings.email30Days}
+                      onCheckedChange={(checked) => setAlertSettings(prev => ({...prev, email30Days: checked}))}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between space-x-2 p-3 border rounded-md">
+                    <Label htmlFor="alert-inapp-critical" className="flex flex-col space-y-1">
+                      <span>In-app critical alerts</span>
+                      <span className="font-normal leading-snug text-muted-foreground">
+                        Show prominent in-app alerts for items expiring today or already expired.
+                      </span>
+                    </Label>
+                    <Switch
+                      id="alert-inapp-critical"
+                      checked={alertSettings.inAppCritical}
+                      onCheckedChange={(checked) => setAlertSettings(prev => ({...prev, inAppCritical: checked}))}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setIsManageAlertDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSaveAlertSettings} className="bg-primary hover:bg-primary/90">Save Preferences</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
         </div>
       </div>
 
@@ -187,3 +260,4 @@ export default function ExpirationTrackerPage() {
     </div>
   );
 }
+

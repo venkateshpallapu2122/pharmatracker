@@ -1,13 +1,19 @@
+
 "use client";
 
 import { EmployeeCard } from "@/components/employees/EmployeeCard";
 import type { Employee } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Search, Users } from "lucide-react"; // Added Users for empty state
+import { UserPlus, Search, Users, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import React, { useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { EmployeeForm, type EmployeeFormValues } from "@/components/employees/EmployeeForm";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext"; // For RBAC
 
-// Mock Data
-const mockEmployees: Employee[] = [
+// Initial Mock Data
+const initialMockEmployees: Employee[] = [
   { id: "1", name: "Dr. Alice Wonderland", role: "Chief Pharmacist", email: "alice.w@example.com", avatarUrl: "https://placehold.co/100x100.png?text=AW" },
   { id: "2", name: "Bob The Builder", role: "Pharmacy Technician", email: "bob.b@example.com", avatarUrl: "https://placehold.co/100x100.png?text=BB" },
   { id: "3", name: "Carol Danvers", role: "Dispensary Manager", email: "carol.d@example.com", avatarUrl: "https://placehold.co/100x100.png?text=CD" },
@@ -17,10 +23,34 @@ const mockEmployees: Employee[] = [
 ];
 
 export default function EmployeesPage() {
-  const handleAddEmployee = () => {
-    // Placeholder for add employee dialog/form
-    alert("Add new employee functionality to be implemented.");
+  const [employees, setEmployees] = useState<Employee[]>(initialMockEmployees);
+  const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const { toast } = useToast();
+  const { user } = useAuth(); // Get user for RBAC
+
+  const handleAddEmployeeSubmit = (values: EmployeeFormValues) => {
+    setIsSubmitting(true);
+    // Simulate API call
+    setTimeout(() => {
+      const newEmployee: Employee = {
+        id: String(Date.now()), // Simple unique ID for mock
+        ...values,
+        avatarUrl: `https://placehold.co/100x100.png?text=${values.name.substring(0,2).toUpperCase()}` // Placeholder avatar
+      };
+      setEmployees(prev => [newEmployee, ...prev]);
+      toast({ title: "Employee Added", description: `${values.name} has been added to the directory.` });
+      setIsAddEmployeeDialogOpen(false);
+      setIsSubmitting(false);
+    }, 1000);
   };
+
+  const filteredEmployees = employees.filter(employee =>
+    employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    employee.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    employee.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -32,29 +62,60 @@ export default function EmployeesPage() {
         <div className="flex gap-2 w-full md:w-auto">
           <div className="relative flex-grow md:flex-grow-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input type="search" placeholder="Search employees..." className="pl-10 w-full md:w-64" />
+            <Input 
+              type="search" 
+              placeholder="Search employees..." 
+              className="pl-10 w-full md:w-64" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              suppressHydrationWarning
+            />
           </div>
-          <Button onClick={handleAddEmployee} className="bg-accent text-accent-foreground hover:bg-accent/90">
-            <UserPlus className="mr-2 h-5 w-5" /> Add Employee
-          </Button>
+          {user?.role === 'admin' && (
+            <Dialog open={isAddEmployeeDialogOpen} onOpenChange={(open) => !isSubmitting && setIsAddEmployeeDialogOpen(open)}>
+              <DialogTrigger asChild>
+                <Button className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={isSubmitting} suppressHydrationWarning>
+                  <UserPlus className="mr-2 h-5 w-5" /> Add Employee
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="font-headline text-xl">Add New Employee</DialogTitle>
+                  <DialogDescription>
+                    Fill in the details for the new employee.
+                  </DialogDescription>
+                </DialogHeader>
+                <EmployeeForm
+                  onSubmit={handleAddEmployeeSubmit}
+                  onCancel={() => setIsAddEmployeeDialogOpen(false)}
+                  isSubmitting={isSubmitting}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 
-      {mockEmployees.length > 0 ? (
+      {filteredEmployees.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {mockEmployees.map((employee) => (
+          {filteredEmployees.map((employee) => (
             <EmployeeCard key={employee.id} employee={employee} />
           ))}
         </div>
       ) : (
          <div className="text-center py-10">
             <Users className="mx-auto h-12 w-12 text-muted-foreground" />
-            <p className="mt-4 text-lg text-muted-foreground">No employees found.</p>
-            <Button onClick={handleAddEmployee} className="mt-6 bg-accent text-accent-foreground hover:bg-accent/90">
-                <UserPlus className="mr-2 h-5 w-5" /> Add First Employee
-            </Button>
+            <p className="mt-4 text-lg text-muted-foreground">
+              {searchTerm ? "No employees match your search." : "No employees found."}
+            </p>
+            {user?.role === 'admin' && !searchTerm && (
+                <Button onClick={() => setIsAddEmployeeDialogOpen(true)} className="mt-6 bg-accent text-accent-foreground hover:bg-accent/90" suppressHydrationWarning>
+                    <UserPlus className="mr-2 h-5 w-5" /> Add First Employee
+                </Button>
+            )}
         </div>
       )}
     </div>
   );
 }
+

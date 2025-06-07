@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -7,13 +8,15 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, Palette, Lock, Users, Briefcase, Languages, Moon, Sun } from "lucide-react";
+import { Bell, Palette, Lock, Users, Briefcase, Languages, Moon, Sun, Save } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SettingsPage() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     setMounted(true);
@@ -34,6 +37,15 @@ export default function SettingsPage() {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('pharma-theme', 'light');
     }
+  };
+
+  const handleSaveSettings = () => {
+    // Here you would typically save all settings to a backend or localStorage
+    console.log("Saving settings:", { darkMode, notificationsEnabled /*, other settings */ });
+    toast({
+      title: "Settings Saved",
+      description: "Your preferences have been updated successfully.",
+    });
   };
   
   if (!mounted) {
@@ -129,8 +141,11 @@ export default function SettingsPage() {
       </Card>
 
       <CardFooter className="mt-8">
-          <Button className="w-full bg-primary hover:bg-primary/90">Save All Settings</Button>
+          <Button onClick={handleSaveSettings} className="w-full bg-primary hover:bg-primary/90" suppressHydrationWarning>
+            <Save className="mr-2 h-4 w-4" /> Save All Settings
+          </Button>
       </CardFooter>
     </div>
   );
 }
+

@@ -1,9 +1,11 @@
+
 "use client";
 
 import { ActivityLogTable } from "@/components/activity/ActivityLogTable";
 import type { ActivityLog } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Download, RotateCcw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast"; // Added for feedback
 
 // Mock Data
 const mockActivityLogs: ActivityLog[] = [
@@ -17,12 +19,46 @@ const mockActivityLogs: ActivityLog[] = [
 ];
 
 export default function ActivityLogPage() {
+  const { toast } = useToast();
+
   const handleExportLogs = () => {
-    alert("Export logs functionality to be implemented.");
+    if (mockActivityLogs.length === 0) {
+      toast({ title: "No logs to export", description: "The activity log is currently empty.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const headers = Object.keys(mockActivityLogs[0]).join(',');
+      const csvRows = mockActivityLogs.map(log => {
+        return (Object.values(log) as Array<string | number | Record<string, any> | undefined | null>).map(value => {
+          if (typeof value === 'object' && value !== null) {
+            return `"${JSON.stringify(value).replace(/"/g, '""')}"`; // Escape double quotes within JSON string
+          }
+          return `"${String(value ?? '').replace(/"/g, '""')}"`; // Handle null/undefined and escape double quotes
+        }).join(',');
+      });
+
+      const csvString = `${headers}\n${csvRows.join('\n')}`;
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", "activity_logs.csv");
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({ title: "Logs Exported", description: "activity_logs.csv has been downloaded." });
+    } catch (error) {
+      console.error("Error exporting logs:", error);
+      toast({ title: "Export Failed", description: "An error occurred while exporting logs.", variant: "destructive" });
+    }
   };
 
   const handleRefreshLogs = () => {
-    alert("Refresh logs functionality to be implemented.");
+    // In a real app, this would re-fetch logs
+    toast({ title: "Logs Refreshed", description: "Activity log has been updated (mock)." });
   };
 
   return (
@@ -45,3 +81,4 @@ export default function ActivityLogPage() {
     </div>
   );
 }
+
