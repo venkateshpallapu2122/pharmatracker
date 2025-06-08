@@ -6,11 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2, Eye, Loader2, XCircle } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye, Loader2, ArrowDownUp } from "lucide-react"; // Added ArrowDownUp
 import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DatePicker } from "@/components/ui/date-picker";
+// Removed Select and DatePicker imports for column filters
 import {
   Dialog,
   DialogContent,
@@ -38,14 +37,15 @@ interface InventoryTableProps {
   isSubmitting?: boolean;
 }
 
+type SortField = keyof InventoryItem | 'actions' | null; // 'actions' is not sortable
+type SortDirection = "asc" | "desc";
+
 export function InventoryTable({ items, onUpdateItem, onDeleteItem, isSubmitting = false }: InventoryTableProps) {
-  const [searchTerm, setSearchTerm] = useState(""); // Global search
-  const [nameFilter, setNameFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [quantityFilter, setQuantityFilter] = useState("");
-  const [expirationDateFilter, setExpirationDateFilter] = useState<Date | undefined>(undefined);
-  const [statusFilter, setStatusFilter] = useState<InventoryItem['status'] | "all">("all");
-  const [barcodeFilter, setBarcodeFilter] = useState("");
+  const [searchTerm, setSearchTerm] = useState(""); // Global search remains
+
+  // State for sorting
+  const [sortField, setSortField] = useState<SortField>("expirationDate"); // Default sort
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -92,32 +92,58 @@ export function InventoryTable({ items, onUpdateItem, onDeleteItem, isSubmitting
     setSelectedItem(item);
     setIsViewModalOpen(true);
   };
+
+  const formatDate = (dateString: string) => {
+    if (!mounted) return new Date(dateString).toDateString();
+    return new Date(dateString).toLocaleDateString();
+  };
   
-  const filteredItems = useMemo(() => {
-    return items.filter(item => {
-      const matchesGlobalSearch = searchTerm === "" ||
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.barcode && item.barcode.toLowerCase().includes(searchTerm.toLowerCase()));
+  const handleSort = (field: keyof InventoryItem) => {
+    const newDirection = sortField === field && sortDirection === "asc" ? "desc" : "asc";
+    setSortField(field);
+    setSortDirection(newDirection);
+  };
 
-      const matchesName = nameFilter === "" || item.name.toLowerCase().includes(nameFilter.toLowerCase());
-      const matchesCategory = categoryFilter === "" || item.category.toLowerCase().includes(categoryFilter.toLowerCase());
-      
-      const quantityFilterNum = parseFloat(quantityFilter);
-      const matchesQuantity = quantityFilter === "" || 
-                              ( !isNaN(quantityFilterNum) && item.quantity === quantityFilterNum ) ||
-                              ( isNaN(quantityFilterNum) && item.quantity.toString().toLowerCase().includes(quantityFilter.toLowerCase()));
+  const renderSortIcon = (field: keyof InventoryItem) => {
+    if (sortField === field) {
+      return sortDirection === 'asc' ? ' ▲' : ' ▼';
+    }
+    return <ArrowDownUp className="inline ml-1 h-3 w-3 text-muted-foreground/50 group-hover:text-muted-foreground" />;
+  };
 
+  const sortedAndFilteredItems = useMemo(() => {
+    let itemsToDisplay = items.filter(item => {
+      const searchLower = searchTerm.toLowerCase();
+      return searchLower === "" ||
+        item.name.toLowerCase().includes(searchLower) ||
+        item.category.toLowerCase().includes(searchLower) ||
+        (item.barcode && item.barcode.toLowerCase().includes(searchLower)) ||
+        item.status.toLowerCase().includes(searchLower) ||
+        item.quantity.toString().includes(searchLower) ||
+        formatDate(item.expirationDate).toLowerCase().includes(searchLower);
+    });
 
-      const matchesExpirationDate = !expirationDateFilter ||
-        new Date(item.expirationDate).toDateString() === expirationDateFilter.toDateString();
+    if (sortField && sortField !== 'actions') {
+      itemsToDisplay.sort((a, b) => {
+        const valA = a[sortField as keyof InventoryItem];
+        const valB = b[sortField as keyof InventoryItem];
 
-      const matchesStatus = statusFilter === "all" || item.status === statusFilter;
-      const matchesBarcode = barcodeFilter === "" || (item.barcode && item.barcode.toLowerCase().includes(barcodeFilter.toLowerCase()));
+        let comparison = 0;
 
-      return matchesGlobalSearch && matchesName && matchesCategory && matchesQuantity && matchesExpirationDate && matchesStatus && matchesBarcode;
-    }).sort((a, b) => new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime());
-  }, [items, searchTerm, nameFilter, categoryFilter, quantityFilter, expirationDateFilter, statusFilter, barcodeFilter]);
+        if (valA === null || valA === undefined) comparison = -1;
+        else if (valB === null || valB === undefined) comparison = 1;
+        else if (sortField === 'expirationDate') {
+          comparison = new Date(valA as string).getTime() - new Date(valB as string).getTime();
+        } else if (typeof valA === 'string' && typeof valB === 'string') {
+          comparison = valA.localeCompare(valB);
+        } else if (typeof valA === 'number' && typeof valB === 'number') {
+          comparison = valA - valB;
+        }
+        return sortDirection === 'asc' ? comparison : comparison * -1;
+      });
+    }
+    return itemsToDisplay;
+  }, [items, searchTerm, sortField, sortDirection, mounted]); // added mounted to re-evaluate formatDate
 
 
   const getStatusBadgeVariant = (status: InventoryItem['status']): "default" | "secondary" | "destructive" | "outline" => {
@@ -133,100 +159,48 @@ export function InventoryTable({ items, onUpdateItem, onDeleteItem, isSubmitting
     }
   };
 
-  const formatDate = (dateString: string) => {
-    if (!mounted) return new Date(dateString).toDateString(); 
-    return new Date(dateString).toLocaleDateString();
-  };
-
-  const renderFilterInput = (placeholder: string, value: string, onChange: (val: string) => void) => (
-    <Input
-      placeholder={placeholder}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-8 mt-1 w-full text-xs"
-      onClick={(e) => e.stopPropagation()}
-      suppressHydrationWarning
-    />
-  );
-
-  const clearAllColumnFilters = () => {
-    setNameFilter("");
-    setCategoryFilter("");
-    setQuantityFilter("");
-    setExpirationDateFilter(undefined);
-    setStatusFilter("all");
-    setBarcodeFilter("");
-  };
-
-  const hasActiveColumnFilters = nameFilter || categoryFilter || quantityFilter || expirationDateFilter || statusFilter !== "all" || barcodeFilter;
-
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
         <Input 
-          placeholder="Global search (name, category, barcode)..."
+          placeholder="Global search inventory..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full sm:max-w-xs md:max-w-sm"
           suppressHydrationWarning
         />
-        {hasActiveColumnFilters && (
-            <Button variant="outline" size="sm" onClick={clearAllColumnFilters} className="w-full sm:w-auto">
-                <XCircle className="mr-2 h-4 w-4" /> Clear Column Filters
-            </Button>
-        )}
+        {/* Removed "Clear Column Filters" button */}
       </div>
       <Card className="shadow-lg">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="font-headline min-w-[200px]">
-                  <div>Name</div>
-                  {renderFilterInput("Filter Name...", nameFilter, setNameFilter)}
+                <TableHead className="font-headline min-w-[200px] cursor-pointer group" onClick={() => handleSort('name')}>
+                  Name {renderSortIcon('name')}
                 </TableHead>
-                <TableHead className="font-headline hidden sm:table-cell min-w-[150px]">
-                  <div>Category</div>
-                  {renderFilterInput("Filter Category...", categoryFilter, setCategoryFilter)}
+                <TableHead className="font-headline hidden sm:table-cell min-w-[150px] cursor-pointer group" onClick={() => handleSort('category')}>
+                  Category {renderSortIcon('category')}
                 </TableHead>
-                <TableHead className="font-headline text-right min-w-[120px]">
-                  <div>Quantity</div>
-                  {renderFilterInput("Qty...", quantityFilter, setQuantityFilter)}
+                <TableHead className="font-headline text-right min-w-[120px] cursor-pointer group" onClick={() => handleSort('quantity')}>
+                  Quantity {renderSortIcon('quantity')}
                 </TableHead>
-                <TableHead className="font-headline hidden md:table-cell min-w-[180px]">
-                  <div>Expiration Date</div>
-                  <DatePicker 
-                    date={expirationDateFilter} 
-                    setDate={setExpirationDateFilter} 
-                    className="h-8 mt-1 w-full text-xs"
-                    onClick={(e) => e.stopPropagation()}
-                  />
+                <TableHead className="font-headline hidden md:table-cell min-w-[180px] cursor-pointer group" onClick={() => handleSort('expirationDate')}>
+                  Expiration Date {renderSortIcon('expirationDate')}
                 </TableHead>
-                <TableHead className="font-headline hidden lg:table-cell min-w-[150px]">
-                  <div>Barcode</div>
-                  {renderFilterInput("Filter Barcode...", barcodeFilter, setBarcodeFilter)}
+                <TableHead className="font-headline hidden lg:table-cell min-w-[150px] cursor-pointer group" onClick={() => handleSort('barcode')}>
+                  Barcode {renderSortIcon('barcode')}
                 </TableHead>
-                <TableHead className="font-headline min-w-[150px]">
-                  <div>Status</div>
-                  <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as InventoryItem['status'] | "all")} >
-                    <SelectTrigger className="h-8 mt-1 w-full text-xs" onClick={(e) => e.stopPropagation()}>
-                      <SelectValue placeholder="Filter Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="In Stock">In Stock</SelectItem>
-                      <SelectItem value="Low Stock">Low Stock</SelectItem>
-                      <SelectItem value="Out of Stock">Out of Stock</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <TableHead className="font-headline min-w-[150px] cursor-pointer group" onClick={() => handleSort('status')}>
+                  Status {renderSortIcon('status')}
                 </TableHead>
                 <TableHead className="font-headline text-right min-w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredItems.length > 0 ? (
-                filteredItems.map((item) => (
+              {sortedAndFilteredItems.length > 0 ? (
+                sortedAndFilteredItems.map((item) => (
                   <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
                     <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell className="hidden sm:table-cell">{item.category}</TableCell>
@@ -263,7 +237,7 @@ export function InventoryTable({ items, onUpdateItem, onDeleteItem, isSubmitting
               ) : (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                    No inventory items match your filters.
+                    No inventory items match your search.
                   </TableCell>
                 </TableRow>
               )}
@@ -341,4 +315,3 @@ const Card = ({ children, className }: { children: React.ReactNode, className?: 
     {children}
   </div>
 );
-
