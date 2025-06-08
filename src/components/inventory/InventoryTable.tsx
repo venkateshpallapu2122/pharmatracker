@@ -202,7 +202,7 @@ export function InventoryTable({ items, onUpdateItem, onDeleteItem, isSubmitting
               {sortedAndFilteredItems.length > 0 ? (
                 sortedAndFilteredItems.map((item) => (
                   <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
-                    <TableCell className="font-medium">{item.name}</TableCell>
+                    <TableCell className="font-medium truncate max-w-xs" title={item.name}>{item.name}</TableCell>
                     <TableCell className="hidden sm:table-cell">{item.category}</TableCell>
                     <TableCell className="text-right">{item.quantity}</TableCell>
                     <TableCell className="hidden md:table-cell">{formatDate(item.expirationDate)}</TableCell>
