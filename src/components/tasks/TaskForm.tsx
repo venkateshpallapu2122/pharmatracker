@@ -48,6 +48,9 @@ interface TaskFormProps {
   employees?: { id: string; name: string }[]; 
 }
 
+// Define a unique value for the "Unassigned" option that is not an empty string
+const UNASSIGNED_EMPLOYEE_VALUE = "__UNASSIGNED_TASK_EMPLOYEE__";
+
 export function TaskForm({
   onSubmit,
   onCancel,
@@ -64,7 +67,7 @@ export function TaskForm({
       dueDate: initialData?.dueDate ? new Date(initialData.dueDate) : undefined,
       priority: initialData?.priority || "Medium",
       status: initialData?.status || "Pending",
-      assignedTo: initialData?.assignedTo || "",
+      assignedTo: initialData?.assignedTo || undefined, // React Hook Form state will be string | undefined
     },
   });
 
@@ -161,14 +164,25 @@ export function TaskForm({
             render={({ field }) => (
                 <FormItem>
                 <FormLabel>Assigned To (Optional)</FormLabel>
-                 <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting || employees.length === 0}>
+                 <Select 
+                    onValueChange={(value) => {
+                      // If user selects our special "Unassigned" value, set RHF state to undefined
+                      field.onChange(value === UNASSIGNED_EMPLOYEE_VALUE ? undefined : value);
+                    }} 
+                    // If RHF state (field.value) is undefined, make Select show the "Unassigned" item.
+                    // Otherwise, show the actual employee name.
+                    // The Select's own `value` prop always expects a string.
+                    value={field.value || UNASSIGNED_EMPLOYEE_VALUE} 
+                    disabled={isSubmitting || employees.length === 0}
+                  >
                     <FormControl>
                     <SelectTrigger>
                         <SelectValue placeholder={employees.length > 0 ? "Select employee" : "No employees available"} />
                     </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                        <SelectItem value="">Unassigned</SelectItem>
+                        {/* Use the non-empty constant for the "Unassigned" option's value */}
+                        <SelectItem value={UNASSIGNED_EMPLOYEE_VALUE}>Unassigned</SelectItem>
                         {employees.map(emp => (
                             <SelectItem key={emp.id} value={emp.name}>{emp.name}</SelectItem>
                         ))}
@@ -192,3 +206,4 @@ export function TaskForm({
     </Form>
   );
 }
+
