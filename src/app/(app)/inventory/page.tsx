@@ -63,6 +63,18 @@ export default function InventoryPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
+  const formatFirebaseError = (error: unknown): string => {
+    if (typeof error === 'object' && error !== null) {
+      const firebaseError = error as { code?: string; message?: string };
+      if (firebaseError.code) {
+        return `Firestore error (${firebaseError.code}): ${firebaseError.message || 'Unknown Firebase error'}`;
+      } else if (firebaseError.message) {
+        return `Error: ${firebaseError.message}`;
+      }
+    }
+    return "An unexpected error occurred. Check console for details.";
+  };
+
   const fetchInventoryItems = useCallback(async (seededItems?: InventoryItem[]) => {
     setIsLoading(true);
     try {
@@ -86,7 +98,7 @@ export default function InventoryPage() {
                 quantity: itemData.quantity,
                 expirationDate: Timestamp.fromDate(new Date(itemData.expirationDate)),
                 status: itemData.status,
-                ...(itemData.barcode && { barcode: itemData.barcode }), // Only add barcode if it exists
+                ...(itemData.barcode && { barcode: itemData.barcode }),
             };
             batch.set(docRef, dataToSeed);
             addedItems.push({ 
@@ -98,10 +110,10 @@ export default function InventoryPage() {
         setInventoryItems(addedItems.sort((a,b) => new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime()));
         toast({ title: "Mock Data Seeded", description: "Initial inventory created successfully." });
       } else {
-        const items: InventoryItem[] = querySnapshot.docs.map(doc => {
-          const data = doc.data();
+        const items: InventoryItem[] = querySnapshot.docs.map(docSnap => {
+          const data = docSnap.data();
           return {
-            id: doc.id,
+            id: docSnap.id,
             name: data.name,
             category: data.category,
             quantity: data.quantity,
@@ -116,7 +128,7 @@ export default function InventoryPage() {
       console.error("Error fetching inventory items: ", error);
       toast({
         title: "Error Fetching Data",
-        description: "Could not fetch inventory items from Firestore.",
+        description: formatFirebaseError(error),
         variant: "destructive",
       });
     } finally {
@@ -138,7 +150,7 @@ export default function InventoryPage() {
         expirationDate: Timestamp.fromDate(values.expirationDate),
         status: values.status,
       };
-      if (values.barcode) {
+      if (values.barcode && values.barcode.trim() !== "") {
         newItemDataToFirestore.barcode = values.barcode;
       }
 
@@ -151,7 +163,7 @@ export default function InventoryPage() {
         quantity: values.quantity,
         expirationDate: values.expirationDate.toISOString(),
         status: values.status,
-        ...(values.barcode && { barcode: values.barcode }),
+        ...(values.barcode && values.barcode.trim() !== "" && { barcode: values.barcode.trim() }),
       };
       setInventoryItems((prevItems) => [newItemForState, ...prevItems].sort((a,b) => new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime()));
 
@@ -161,7 +173,7 @@ export default function InventoryPage() {
       console.error("Error adding new item: ", error);
       toast({
         title: "Error Adding Item",
-        description: "Could not add new item to Firestore. Check console for details.",
+        description: formatFirebaseError(error),
         variant: "destructive",
       });
     } finally {
@@ -181,15 +193,10 @@ export default function InventoryPage() {
         expirationDate: Timestamp.fromDate(new Date(updatedItem.expirationDate)),
         status: updatedItem.status,
       };
-      if (updatedItem.barcode) {
-        dataToUpdateFirestore.barcode = updatedItem.barcode;
+      if (updatedItem.barcode && updatedItem.barcode.trim() !== "") {
+        dataToUpdateFirestore.barcode = updatedItem.barcode.trim();
       } else {
-        // If barcode is explicitly empty or undefined in the form,
-        // you might want to remove it from Firestore.
-        // This depends on desired behavior. For now, only add if present.
-        // For explicit removal, you'd use:
-        // dataToUpdateFirestore.barcode = deleteField();
-        // but ensure barcode field truly becomes undefined/null from form if that's intended.
+         dataToUpdateFirestore.barcode = null; // Or use deleteField() if you want to remove it
       }
 
       await updateDoc(itemDocRef, dataToUpdateFirestore);
@@ -203,7 +210,7 @@ export default function InventoryPage() {
       console.error("Error updating item: ", error);
       toast({
         title: "Error Updating Item",
-        description: "Could not update item in Firestore. Check console for details.",
+        description: formatFirebaseError(error),
         variant: "destructive",
       });
     } finally {
@@ -219,12 +226,12 @@ export default function InventoryPage() {
     try {
       await deleteDoc(doc(db, "inventory", itemId));
       setInventoryItems(prevItems => prevItems.filter(item => item.id !== itemId));
-      toast({ title: "Item Deleted", description: `${itemToDelete.name} has been removed from the inventory.`, variant: "destructive" });
+      toast({ title: "Item Deleted", description: `${itemToDelete.name} has been removed from the inventory.`, variant: "default" }); // Changed to default variant
     } catch (error) {
       console.error("Error deleting item: ", error);
       toast({
         title: "Error Deleting Item",
-        description: "Could not delete item from Firestore. Check console for details.",
+        description: formatFirebaseError(error),
         variant: "destructive",
       });
     } finally {
