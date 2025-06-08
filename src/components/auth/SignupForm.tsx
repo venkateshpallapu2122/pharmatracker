@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/label"; // Not directly used, but good to keep for consistency if FormLabel is used
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import Link from "next/link";
@@ -19,7 +19,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
-  displayName: z.string().min(2, { message: "Display name must be at least 2 characters." }).optional(),
+  displayName: z.string().min(2, { message: "Display name must be at least 2 characters." }).max(50, {message: "Display name too long."}).optional(),
   email: z.string().email({ message: "Invalid email address." }),
   password: z.string().min(6, { message: "Password must be at least 6 characters." }),
   confirmPassword: z.string(),
@@ -27,6 +27,26 @@ const formSchema = z.object({
   message: "Passwords don't match.",
   path: ["confirmPassword"],
 });
+
+const getInitialsForAvatar = (name?: string | null, email?: string | null): string => {
+  if (name) {
+    const parts = name.trim().split(" ");
+    if (parts.length > 1 && parts[0] && parts[parts.length - 1]) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    if (parts[0] && parts[0].length >=2 ) return parts[0].substring(0, 2).toUpperCase();
+    if (parts[0] && parts[0].length === 1) return parts[0][0].toUpperCase();
+  }
+  if (email) {
+    const emailPrefix = email.split('@')[0];
+    return emailPrefix.substring(0, Math.min(2, emailPrefix.length)).toUpperCase();
+  }
+  return "PT"; // PharmaTrack default
+};
+
+const generatePhotoUrlFromInitials = (initials: string): string => {
+  return `https://placehold.co/100x100.png?text=${initials}`;
+};
 
 export function SignupForm() {
   const [loading, setLoading] = useState(false);
@@ -49,20 +69,25 @@ export function SignupForm() {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
+      const finalDisplayName = values.displayName?.trim() || user.email?.split('@')[0] || "User";
+      const initials = getInitialsForAvatar(finalDisplayName, user.email);
+      const photoURL = generatePhotoUrlFromInitials(initials);
+
       // Update Firebase Auth profile
-      if (values.displayName) {
-        await updateProfile(user, { displayName: values.displayName });
-      }
+      await updateProfile(user, { 
+        displayName: finalDisplayName,
+        photoURL: photoURL 
+      });
 
       // Create user document in Firestore
       const userDocRef = doc(db, "users", user.uid);
       await setDoc(userDocRef, {
         uid: user.uid,
         email: user.email,
-        displayName: values.displayName || user.email?.split('@')[0] || "User",
+        displayName: finalDisplayName,
         role: 'user', // Default role for new sign-ups
         createdAt: serverTimestamp(),
-        photoURL: user.photoURL, // Save initial photoURL (likely null)
+        photoURL: photoURL, 
       });
 
       toast({
@@ -95,7 +120,7 @@ export function SignupForm() {
               name="displayName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Display Name (Optional)</FormLabel>
+                  <FormLabel>Display Name</FormLabel>
                   <FormControl>
                     <Input type="text" placeholder="e.g., John Doe" {...field} />
                   </FormControl>
