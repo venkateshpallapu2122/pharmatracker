@@ -15,7 +15,7 @@ export default function HomePage() {
         </p>
       </header>
 
-      <main className="mb-8 sm:mb-12 w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl">
+      {/* <main className="mb-8 sm:mb-12 w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl">
         <Image
           src="https://placehold.co/800x400.png"
           alt="PharmaTrack Dashboard Mockup"
@@ -25,7 +25,7 @@ export default function HomePage() {
           data-ai-hint="pharmacy dashboard"
           priority
         />
-      </main>
+      </main> */}
 
       <section className="mb-8 sm:mb-12 max-w-xs sm:max-w-xl md:max-w-3xl mx-auto w-full">
         <h2 className="text-2xl sm:text-3xl font-headline text-primary mb-6">Key Features</h2>
