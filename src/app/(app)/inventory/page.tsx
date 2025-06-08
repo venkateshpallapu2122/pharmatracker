@@ -17,7 +17,7 @@ import {
 import { InventoryItemForm, type InventoryItemFormValues } from "@/components/inventory/InventoryItemForm";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, Timestamp, addDoc, writeBatch } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, deleteDoc, Timestamp, addDoc, writeBatch } from "firebase/firestore";
 
 // Mock Data for seeding if collection is empty
 const initialMockInventory: Omit<InventoryItem, 'id'>[] = [
@@ -79,12 +79,16 @@ export default function InventoryPage() {
         const addedItems: InventoryItem[] = [];
 
         for (const itemData of initialMockInventory) {
-            const docRef = doc(collection(db, "inventory")); // Auto-generate ID
-            batch.set(docRef, {
-                ...itemData,
-                expirationDate: Timestamp.fromDate(new Date(itemData.expirationDate)), // Store as Timestamp
-            });
-            // For local state, keep expirationDate as ISO string
+            const docRef = doc(collection(db, "inventory")); 
+            const dataToSeed = {
+                name: itemData.name,
+                category: itemData.category,
+                quantity: itemData.quantity,
+                expirationDate: Timestamp.fromDate(new Date(itemData.expirationDate)),
+                status: itemData.status,
+                ...(itemData.barcode && { barcode: itemData.barcode }), // Only add barcode if it exists
+            };
+            batch.set(docRef, dataToSeed);
             addedItems.push({ 
                 id: docRef.id,
                 ...itemData 
@@ -127,16 +131,27 @@ export default function InventoryPage() {
   const handleAddNewItem = async (values: InventoryItemFormValues) => {
     setIsSubmitting(true);
     try {
-      const newItemDataToFirestore = {
-        ...values,
-        expirationDate: Timestamp.fromDate(values.expirationDate), 
+      const newItemDataToFirestore: { [key: string]: any } = {
+        name: values.name,
+        category: values.category,
+        quantity: values.quantity,
+        expirationDate: Timestamp.fromDate(values.expirationDate),
+        status: values.status,
       };
+      if (values.barcode) {
+        newItemDataToFirestore.barcode = values.barcode;
+      }
+
       const docRef = await addDoc(collection(db, "inventory"), newItemDataToFirestore);
       
       const newItemForState: InventoryItem = {
         id: docRef.id,
-        ...values,
+        name: values.name,
+        category: values.category,
+        quantity: values.quantity,
         expirationDate: values.expirationDate.toISOString(),
+        status: values.status,
+        ...(values.barcode && { barcode: values.barcode }),
       };
       setInventoryItems((prevItems) => [newItemForState, ...prevItems].sort((a,b) => new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime()));
 
@@ -146,7 +161,7 @@ export default function InventoryPage() {
       console.error("Error adding new item: ", error);
       toast({
         title: "Error Adding Item",
-        description: "Could not add new item to Firestore.",
+        description: "Could not add new item to Firestore. Check console for details.",
         variant: "destructive",
       });
     } finally {
@@ -158,13 +173,26 @@ export default function InventoryPage() {
     setIsSubmitting(true);
     try {
       const itemDocRef = doc(db, "inventory", updatedItem.id);
-      const dataToUpdateFirestore = {
-        ...updatedItem,
+      
+      const dataToUpdateFirestore: { [key: string]: any } = {
+        name: updatedItem.name,
+        category: updatedItem.category,
+        quantity: updatedItem.quantity,
         expirationDate: Timestamp.fromDate(new Date(updatedItem.expirationDate)),
+        status: updatedItem.status,
       };
-      const { id, ...updatePayload } = dataToUpdateFirestore; // Exclude id from the update payload
+      if (updatedItem.barcode) {
+        dataToUpdateFirestore.barcode = updatedItem.barcode;
+      } else {
+        // If barcode is explicitly empty or undefined in the form,
+        // you might want to remove it from Firestore.
+        // This depends on desired behavior. For now, only add if present.
+        // For explicit removal, you'd use:
+        // dataToUpdateFirestore.barcode = deleteField();
+        // but ensure barcode field truly becomes undefined/null from form if that's intended.
+      }
 
-      await updateDoc(itemDocRef, updatePayload);
+      await updateDoc(itemDocRef, dataToUpdateFirestore);
       
       setInventoryItems(prevItems =>
         prevItems.map(item => item.id === updatedItem.id ? updatedItem : item)
@@ -175,7 +203,7 @@ export default function InventoryPage() {
       console.error("Error updating item: ", error);
       toast({
         title: "Error Updating Item",
-        description: "Could not update item in Firestore.",
+        description: "Could not update item in Firestore. Check console for details.",
         variant: "destructive",
       });
     } finally {
@@ -196,7 +224,7 @@ export default function InventoryPage() {
       console.error("Error deleting item: ", error);
       toast({
         title: "Error Deleting Item",
-        description: "Could not delete item from Firestore.",
+        description: "Could not delete item from Firestore. Check console for details.",
         variant: "destructive",
       });
     } finally {
