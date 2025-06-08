@@ -4,7 +4,7 @@
 import { InventoryTable } from "@/components/inventory/InventoryTable";
 import type { InventoryItem } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Loader2, PlusCircle } from "lucide-react";
+import { Loader2, PlusCircle, Download } from "lucide-react";
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
@@ -14,6 +14,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { InventoryItemForm, type InventoryItemFormValues } from "@/components/inventory/InventoryItemForm";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
@@ -196,7 +204,7 @@ export default function InventoryPage() {
       if (updatedItem.barcode && updatedItem.barcode.trim() !== "") {
         dataToUpdateFirestore.barcode = updatedItem.barcode.trim();
       } else {
-         dataToUpdateFirestore.barcode = null; // Or use deleteField() if you want to remove it
+         dataToUpdateFirestore.barcode = null; 
       }
 
       await updateDoc(itemDocRef, dataToUpdateFirestore);
@@ -226,7 +234,7 @@ export default function InventoryPage() {
     try {
       await deleteDoc(doc(db, "inventory", itemId));
       setInventoryItems(prevItems => prevItems.filter(item => item.id !== itemId));
-      toast({ title: "Item Deleted", description: `${itemToDelete.name} has been removed from the inventory.`, variant: "default" }); // Changed to default variant
+      toast({ title: "Item Deleted", description: `${itemToDelete.name} has been removed from the inventory.`, variant: "default" });
     } catch (error) {
       console.error("Error deleting item: ", error);
       toast({
@@ -239,6 +247,49 @@ export default function InventoryPage() {
     }
   };
 
+  const handleExportByStatus = (status?: InventoryItem['status']) => {
+    let itemsToExport = inventoryItems;
+    let fileNameSuffix = "all_items";
+
+    if (status) {
+      itemsToExport = inventoryItems.filter(item => item.status === status);
+      fileNameSuffix = status.toLowerCase().replace(/\s+/g, '_') + "_items";
+    }
+
+    if (itemsToExport.length === 0) {
+      toast({ title: "No items to export", description: `No items found with status: ${status || 'All'}.`, variant: "destructive" });
+      return;
+    }
+
+    try {
+      const headers = Object.keys(itemsToExport[0]).join(',');
+      const csvRows = itemsToExport.map(item => {
+        return (Object.values(item) as Array<string | number | Record<string, any> | undefined | null>).map(value => {
+          if (typeof value === 'object' && value !== null) {
+            return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
+          }
+          return `"${String(value ?? '').replace(/"/g, '""')}"`;
+        }).join(',');
+      });
+
+      const csvString = `${headers}\n${csvRows.join('\n')}`;
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `inventory_${fileNameSuffix}_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({ title: "Inventory Exported", description: `inventory_${fileNameSuffix}.csv has been downloaded.` });
+    } catch (error) {
+      console.error("Error exporting inventory:", error);
+      toast({ title: "Export Failed", description: "An error occurred while exporting inventory.", variant: "destructive" });
+    }
+  };
+
   return (
     <div className="space-y-6 md:space-y-8 animate-fadeIn">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -246,26 +297,51 @@ export default function InventoryPage() {
           <h2 className="text-3xl font-headline text-primary">Inventory Overview</h2>
           <p className="text-muted-foreground font-body">Manage and track your pharmaceutical products.</p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={(open) => !isSubmitting && setIsAddDialogOpen(open)}>
-          <DialogTrigger asChild>
-            <Button className="bg-accent text-accent-foreground hover:bg-accent/90 w-full sm:w-auto" disabled={isSubmitting}>
-              <PlusCircle className="mr-2 h-5 w-5" /> Add New Item
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md md:max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="font-headline text-xl">Add New Inventory Item</DialogTitle>
-              <DialogDescription>
-                Fill in the details of the new pharmaceutical product.
-              </DialogDescription>
-            </DialogHeader>
-            <InventoryItemForm
-              onSubmit={handleAddNewItem}
-              onCancel={() => setIsAddDialogOpen(false)}
-              isSubmitting={isSubmitting}
-            />
-          </DialogContent>
-        </Dialog>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Dialog open={isAddDialogOpen} onOpenChange={(open) => !isSubmitting && setIsAddDialogOpen(open)}>
+            <DialogTrigger asChild>
+              <Button className="bg-accent text-accent-foreground hover:bg-accent/90 w-full sm:w-auto" disabled={isSubmitting}>
+                <PlusCircle className="mr-2 h-5 w-5" /> Add New Item
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md md:max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="font-headline text-xl">Add New Inventory Item</DialogTitle>
+                <DialogDescription>
+                  Fill in the details of the new pharmaceutical product.
+                </DialogDescription>
+              </DialogHeader>
+              <InventoryItemForm
+                onSubmit={handleAddNewItem}
+                onCancel={() => setIsAddDialogOpen(false)}
+                isSubmitting={isSubmitting}
+              />
+            </DialogContent>
+          </Dialog>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full sm:w-auto" disabled={isSubmitting || isLoading || inventoryItems.length === 0}>
+                <Download className="mr-2 h-5 w-5" /> Export Data
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Export Options</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleExportByStatus()}>
+                Export All Items
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExportByStatus('In Stock')}>
+                Export In Stock Items
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExportByStatus('Low Stock')}>
+                Export Low Stock Items
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExportByStatus('Out of Stock')}>
+                Export Out of Stock Items
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
@@ -282,4 +358,3 @@ export default function InventoryPage() {
     </div>
   );
 }
-
