@@ -6,10 +6,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2, PackageSearch, Eye, Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { MoreHorizontal, Edit, Trash2, Eye, Loader2, XCircle } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -38,8 +39,14 @@ interface InventoryTableProps {
 }
 
 export function InventoryTable({ items, onUpdateItem, onDeleteItem, isSubmitting = false }: InventoryTableProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterCategory, setFilterCategory] = useState("all");
+  const [searchTerm, setSearchTerm] = useState(""); // Global search
+  const [nameFilter, setNameFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [quantityFilter, setQuantityFilter] = useState("");
+  const [expirationDateFilter, setExpirationDateFilter] = useState<Date | undefined>(undefined);
+  const [statusFilter, setStatusFilter] = useState<InventoryItem['status'] | "all">("all");
+  const [barcodeFilter, setBarcodeFilter] = useState("");
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
@@ -86,15 +93,32 @@ export function InventoryTable({ items, onUpdateItem, onDeleteItem, isSubmitting
     setIsViewModalOpen(true);
   };
   
-  const uniqueCategories = ["all", ...new Set(items.map(item => item.category))];
+  const filteredItems = useMemo(() => {
+    return items.filter(item => {
+      const matchesGlobalSearch = searchTerm === "" ||
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.barcode && item.barcode.toLowerCase().includes(searchTerm.toLowerCase()));
 
-  const filteredItems = items.filter(item => {
-    const matchesSearchTerm = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                              item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                              (item.barcode && item.barcode.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCategory = filterCategory === "all" || item.category === filterCategory;
-    return matchesSearchTerm && matchesCategory;
-  }).sort((a, b) => new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime());
+      const matchesName = nameFilter === "" || item.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesCategory = categoryFilter === "" || item.category.toLowerCase().includes(categoryFilter.toLowerCase());
+      
+      const quantityFilterNum = parseFloat(quantityFilter);
+      const matchesQuantity = quantityFilter === "" || 
+                              ( !isNaN(quantityFilterNum) && item.quantity === quantityFilterNum ) ||
+                              ( isNaN(quantityFilterNum) && item.quantity.toString().toLowerCase().includes(quantityFilter.toLowerCase()));
+
+
+      const matchesExpirationDate = !expirationDateFilter ||
+        new Date(item.expirationDate).toDateString() === expirationDateFilter.toDateString();
+
+      const matchesStatus = statusFilter === "all" || item.status === statusFilter;
+      const matchesBarcode = barcodeFilter === "" || (item.barcode && item.barcode.toLowerCase().includes(barcodeFilter.toLowerCase()));
+
+      return matchesGlobalSearch && matchesName && matchesCategory && matchesQuantity && matchesExpirationDate && matchesStatus && matchesBarcode;
+    }).sort((a, b) => new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime());
+  }, [items, searchTerm, nameFilter, categoryFilter, quantityFilter, expirationDateFilter, statusFilter, barcodeFilter]);
+
 
   const getStatusBadgeVariant = (status: InventoryItem['status']): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
@@ -110,46 +134,94 @@ export function InventoryTable({ items, onUpdateItem, onDeleteItem, isSubmitting
   };
 
   const formatDate = (dateString: string) => {
-    if (!mounted) return new Date(dateString).toDateString(); // Fallback for SSR or pre-mount
+    if (!mounted) return new Date(dateString).toDateString(); 
     return new Date(dateString).toLocaleDateString();
   };
+
+  const renderFilterInput = (placeholder: string, value: string, onChange: (val: string) => void) => (
+    <Input
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="h-8 mt-1 w-full text-xs"
+      onClick={(e) => e.stopPropagation()}
+      suppressHydrationWarning
+    />
+  );
+
+  const clearAllColumnFilters = () => {
+    setNameFilter("");
+    setCategoryFilter("");
+    setQuantityFilter("");
+    setExpirationDateFilter(undefined);
+    setStatusFilter("all");
+    setBarcodeFilter("");
+  };
+
+  const hasActiveColumnFilters = nameFilter || categoryFilter || quantityFilter || expirationDateFilter || statusFilter !== "all" || barcodeFilter;
 
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
         <Input 
-          placeholder="Search name, category, barcode..."
+          placeholder="Global search (name, category, barcode)..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full sm:max-w-xs md:max-w-sm"
           suppressHydrationWarning
         />
-        <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-full sm:w-[180px] md:w-[200px]">
-            <SelectValue placeholder="Filter by category" />
-          </SelectTrigger>
-          <SelectContent>
-            {uniqueCategories.map(category => (
-              <SelectItem key={category} value={category}>
-                {category === "all" ? "All Categories" : category}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {hasActiveColumnFilters && (
+            <Button variant="outline" size="sm" onClick={clearAllColumnFilters} className="w-full sm:w-auto">
+                <XCircle className="mr-2 h-4 w-4" /> Clear Column Filters
+            </Button>
+        )}
       </div>
       <Card className="shadow-lg">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="font-headline">Name</TableHead>
-                <TableHead className="font-headline hidden sm:table-cell">Category</TableHead>
-                <TableHead className="font-headline text-right">Quantity</TableHead>
-                <TableHead className="font-headline hidden md:table-cell">Expiration Date</TableHead>
-                <TableHead className="font-headline hidden lg:table-cell">Barcode</TableHead>
-                <TableHead className="font-headline">Status</TableHead>
-                <TableHead className="font-headline text-right">Actions</TableHead>
+                <TableHead className="font-headline min-w-[200px]">
+                  <div>Name</div>
+                  {renderFilterInput("Filter Name...", nameFilter, setNameFilter)}
+                </TableHead>
+                <TableHead className="font-headline hidden sm:table-cell min-w-[150px]">
+                  <div>Category</div>
+                  {renderFilterInput("Filter Category...", categoryFilter, setCategoryFilter)}
+                </TableHead>
+                <TableHead className="font-headline text-right min-w-[120px]">
+                  <div>Quantity</div>
+                  {renderFilterInput("Qty...", quantityFilter, setQuantityFilter)}
+                </TableHead>
+                <TableHead className="font-headline hidden md:table-cell min-w-[180px]">
+                  <div>Expiration Date</div>
+                  <DatePicker 
+                    date={expirationDateFilter} 
+                    setDate={setExpirationDateFilter} 
+                    className="h-8 mt-1 w-full text-xs"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </TableHead>
+                <TableHead className="font-headline hidden lg:table-cell min-w-[150px]">
+                  <div>Barcode</div>
+                  {renderFilterInput("Filter Barcode...", barcodeFilter, setBarcodeFilter)}
+                </TableHead>
+                <TableHead className="font-headline min-w-[150px]">
+                  <div>Status</div>
+                  <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as InventoryItem['status'] | "all")} >
+                    <SelectTrigger className="h-8 mt-1 w-full text-xs" onClick={(e) => e.stopPropagation()}>
+                      <SelectValue placeholder="Filter Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="In Stock">In Stock</SelectItem>
+                      <SelectItem value="Low Stock">Low Stock</SelectItem>
+                      <SelectItem value="Out of Stock">Out of Stock</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </TableHead>
+                <TableHead className="font-headline text-right min-w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -191,7 +263,7 @@ export function InventoryTable({ items, onUpdateItem, onDeleteItem, isSubmitting
               ) : (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                    No inventory items found. Add items to see them here.
+                    No inventory items match your filters.
                   </TableCell>
                 </TableRow>
               )}
@@ -269,3 +341,4 @@ const Card = ({ children, className }: { children: React.ReactNode, className?: 
     {children}
   </div>
 );
+
