@@ -1,3 +1,4 @@
+
 import type { Employee } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -13,6 +14,12 @@ export function EmployeeCard({ employee }: EmployeeCardProps) {
     const names = name.split(' ');
     if (names.length === 1) return names[0].substring(0, 2).toUpperCase();
     return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+  };
+
+  const handleViewProfileClick = () => {
+    // In a real app, this would navigate to an employee detail page
+    // For now, it will just show an alert.
+    alert(`Viewing profile for:\nName: ${employee.name}\nRole: ${employee.role}\nEmail: ${employee.email}`);
   };
 
   return (
@@ -36,7 +43,12 @@ export function EmployeeCard({ employee }: EmployeeCardProps) {
           <span>(555) 123-4567</span> {/* Placeholder */}
         </div>
         <div className="pt-3">
-          <Button variant="outline" size="sm" className="hover:bg-accent/10 hover:border-accent">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="hover:bg-accent/10 hover:border-accent"
+            onClick={handleViewProfileClick} // Added onClick handler
+          >
             <UserCog className="w-4 h-4 mr-2" />
             View Profile
           </Button>
